@@ -370,7 +370,7 @@ test("multi-room isolation, room validation, GET /api/rooms, and per-token room 
 
   // Per-token room ACL: ops-bot only has rooms: ["ops"]
   const opsRooms = await request(runtime, "/api/rooms", 200, { headers: opsHeaders });
-  assert.deepEqual(opsRooms, { ok: true, rooms: ["ops"] });
+  assert.deepEqual(opsRooms, { ok: true, default_room: "general", rooms: ["ops"] });
 
   await request(runtime, "/api/messages?room=general", 403, { headers: opsHeaders });
   await request(runtime, "/api/messages?room=general", 403, {
@@ -1160,4 +1160,54 @@ test("handles default CORS preflight, method restrictions, input normalization, 
   assert.equal(botSent.message.from, "helper-bot");
   assert.equal(botSent.message.from_name, "helper-bot");
   assert.equal(botSent.message.to, "all");
+});
+
+test("DEFAULT_ROOM env var routes omitted/?room=default and legacy KV import seamlessly", async (t) => {
+  const runtime = startRuntime({
+    kv: true,
+    tokens: {
+      [ALICE_TOKEN]: { id: "alice", name: "Alice", role: "human" },
+      [ASSISTANT_TOKEN]: { id: "assistant", name: "Assistant", role: "bot", rooms: ["default", "ops"] },
+    },
+    bindings: {
+      DEFAULT_ROOM: "main-room",
+    },
+  });
+  t.after(() => runtime.dispose());
+
+  const kv = await runtime.getKVNamespace("BOT_CHAT");
+  await kv.put("messages", JSON.stringify([legacy]));
+
+  const health = await request(runtime, "/api/health");
+  assert.equal(health.default_room, "main-room");
+
+  const roomsRes = await request(runtime, "/api/rooms", 200, { headers: assistantHeaders });
+  assert.equal(roomsRes.default_room, "main-room");
+  assert.deepEqual(roomsRes.rooms, ["main-room", "ops"]);
+
+  const statusDefault = await request(runtime, "/api/status");
+  assert.equal(statusDefault.room, "main-room");
+  assert.equal(statusDefault.count, 1);
+  assert.equal(statusDefault.latest_id, legacy.id);
+
+  const sent = await post(runtime, "routed to custom default");
+  const aliasRead = await request(runtime, "/api/messages?room=default", 200, { headers: assistantHeaders });
+  assert.equal(aliasRead.room, "main-room");
+  assert.equal(aliasRead.messages.length, 2);
+  assert.equal(aliasRead.messages[1].id, sent.id);
+
+  // Explicit WebSocket to omitted room lands in main-room
+  const baseUrl = (await runtime.ready).toString().replace(/\/+$/, "");
+  const wsBase = baseUrl.replace(/^http/, "ws");
+  const sock = await openRealWs(wsBase, "/api/ws", {
+    Authorization: `Bearer ${ALICE_TOKEN}`,
+  });
+  t.after(() => {
+    try { sock.ws.close(1000); } catch {}
+  });
+  const posted = await post(runtime, "ws default room event");
+  const frame = await sock.queue.nextMessage();
+  assert.equal(frame.type, "message");
+  assert.equal(frame.room, "main-room");
+  assert.equal(frame.message.id, posted.id);
 });

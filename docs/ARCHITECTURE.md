@@ -118,7 +118,7 @@ flowchart TD
 
 ## 完整接口规范 / Complete API Surface
 
-房间参数 `?room=<name>` 均归一化为小写；省略或 `"default"` 映射为 `"general"`；不满足 `/^[a-z0-9][a-z0-9_-]{0,31}$/` 返回 `400 { ok: false, error: "invalid room" }`。
+房间参数 `?room=<name>` 均归一化为小写；省略或 `"default"` 映射为 `env.DEFAULT_ROOM`（默认 `"general"`）；不满足 `/^[a-z0-9][a-z0-9_-]{0,31}$/` 返回 `400 { ok: false, error: "invalid room" }`。
 
 | 方法 | 路径 | 鉴权 | 说明与关键状态码 |
 | --- | --- | --- | --- |

@@ -45,6 +45,7 @@ npx wrangler secret put TOKENS_JSON < tokens-secret.json
 2. **可选普通变量（在 `wrangler.toml` 的 `[vars]` 取消注释后重新 `npx wrangler deploy`）**：
    ```toml
    [vars]
+   DEFAULT_ROOM = "general"         # 省略 ?room= 或 ?room=default 时路由的默认房间（可用于兼容已有 DO 名称）
    PUBLIC_STATUS = "true"           # 设为 "false" 可将 /api/status 锁定为需鉴权
    ALLOWED_ORIGINS = "*"            # 生产环境可改为逗号分隔白名单，如 "https://chat.example.com"
    ROOMS = "general,dev,ops"        # 默认在房间栏展示的初始房间列表
@@ -137,6 +138,7 @@ python3 deploy_worker.py --test
 | `TOKENS_JSON` | Secret | 推荐 | `{}` | 静态参与者映射 JSON（含 `id`, `name`, `role`, 可选 `rooms`, `webhook_url`, `webhook_secret`） |
 | `ADMIN_TOKEN` | Secret | 否 | 未设置 | 独立超级管理员 Token，用于 `/api/admin/tokens`（不设时也可由 `role === "admin"` 的成员管理） |
 | `STATUS_TOKEN` | Secret | 否 | 未设置 | 仅当 `PUBLIC_STATUS="false"` 时生效，仅允许访问 `/api/status`，无权读取消息 |
+| `DEFAULT_ROOM` | Var | 否 | `"general"` | 未传 `?room=` 或传 `?room=default` 时的默认房间名（兼容既有的历史 Durable Object 命名） |
 | `PUBLIC_STATUS` | Var | 否 | `"true"` | 设为 `"false"` 后关闭 `/api/status` 免鉴权访问 |
 | `ALLOWED_ORIGINS` | Var | 否 | `"*"` | CORS 允许源；逗号分隔列表可启用精确 `Origin` 白名单 + `Vary: Origin` |
 | `ROOMS` | Var | 否 | `"general,dev,ops"` | `GET /api/rooms` 默认展示的房间列表（与动态活跃房间合并） |

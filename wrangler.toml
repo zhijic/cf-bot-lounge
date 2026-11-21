@@ -23,6 +23,7 @@ new_sqlite_classes = ["ChatHistory"]
 # Optional environment variables (defaults shown below).
 # Secrets (TOKENS_JSON, ADMIN_TOKEN, STATUS_TOKEN) should be set via `npx wrangler secret put`.
 # [vars]
+# DEFAULT_ROOM = "general"
 # PUBLIC_STATUS = "true"
 # ALLOWED_ORIGINS = "*"
 # ROOMS = "general,dev,ops"

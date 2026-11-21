@@ -107,11 +107,17 @@ function getDoStub(env, name) {
   return env.CHAT_HISTORY.get(env.CHAT_HISTORY.idFromName(name));
 }
 
-function parseRoom(url) {
+function getDefaultRoom(env) {
+  const raw = typeof env?.DEFAULT_ROOM === "string" ? env.DEFAULT_ROOM.trim().toLowerCase() : "";
+  if (raw && raw !== "default" && ROOM_RE.test(raw)) return raw;
+  return DEFAULT_ROOM;
+}
+
+function parseRoom(url, env) {
   const raw = url.searchParams.get("room");
-  if (raw === null || raw === "") return DEFAULT_ROOM;
+  if (raw === null || raw === "") return getDefaultRoom(env);
   const norm = raw.toLowerCase();
-  if (norm === "default") return DEFAULT_ROOM;
+  if (norm === "default") return getDefaultRoom(env);
   if (!ROOM_RE.test(norm)) return null;
   return norm;
 }
@@ -126,21 +132,22 @@ function isValidParticipant(entry) {
   );
 }
 
-function normalizeRoomsField(rawRooms) {
+function normalizeRoomsField(rawRooms, env) {
   if (rawRooms === undefined || rawRooms === null) return ["*"];
   if (!Array.isArray(rawRooms)) return [];
+  const def = getDefaultRoom(env);
   const out = [];
   for (const item of rawRooms) {
     if (typeof item !== "string") continue;
     const trimmed = item.trim().toLowerCase();
     if (!trimmed) continue;
-    out.push(trimmed === "default" ? DEFAULT_ROOM : trimmed);
+    out.push(trimmed === "default" ? def : trimmed);
   }
   return out;
 }
 
-function normalizeParticipant(entry, source = "static") {
-  const rooms = normalizeRoomsField(entry.rooms);
+function normalizeParticipant(entry, source = "static", env = null) {
+  const rooms = normalizeRoomsField(entry.rooms, env);
   const webhook_url = typeof entry.webhook_url === "string" && entry.webhook_url.trim()
     ? entry.webhook_url.trim()
     : null;
@@ -167,15 +174,16 @@ function toPublicMe(me) {
   };
 }
 
-function canAccessRoom(participant, room) {
+function canAccessRoom(participant, room, env) {
   if (!participant) return false;
   if (participant.rooms === undefined || participant.rooms === null) return true;
   if (!Array.isArray(participant.rooms)) return false;
+  const def = getDefaultRoom(env);
   for (const allowed of participant.rooms) {
     if (allowed === "*") return true;
     if (typeof allowed === "string") {
       const low = allowed.trim().toLowerCase();
-      if ((low === "default" ? DEFAULT_ROOM : low) === room) return true;
+      if ((low === "default" ? def : low) === room) return true;
     }
   }
   return false;
@@ -285,7 +293,7 @@ async function lookupDynamicToken(env, token) {
   });
   if (!res.ok) return null;
   const data = await res.json().catch(() => null);
-  return data && data.participant ? normalizeParticipant(data.participant, "dynamic") : null;
+  return data && data.participant ? normalizeParticipant(data.participant, "dynamic", env) : null;
 }
 
 async function fetchDynamicTokens(env) {
@@ -294,7 +302,7 @@ async function fetchDynamicTokens(env) {
   const res = await authStub.fetch("https://internal/internal/auth/list", { method: "GET" });
   if (!res.ok) return [];
   const data = await res.json().catch(() => null);
-  return Array.isArray(data?.tokens) ? data.tokens.map((t) => normalizeParticipant(t, "dynamic")) : [];
+  return Array.isArray(data?.tokens) ? data.tokens.map((t) => normalizeParticipant(t, "dynamic", env)) : [];
 }
 
 async function fetchKnownRooms(env) {
@@ -328,7 +336,7 @@ async function authenticateToken(env, token) {
     if (!isValidParticipant(entry)) continue;
     if (constantTimeEqual(token, key)) matched = entry;
   }
-  if (matched) return normalizeParticipant(matched, "static");
+  if (matched) return normalizeParticipant(matched, "static", env);
   return lookupDynamicToken(env, token);
 }
 
@@ -358,7 +366,7 @@ async function listMergedParticipants(env) {
   const byId = new Map();
   for (const entry of Object.values(map)) {
     if (!isValidParticipant(entry)) continue;
-    const norm = normalizeParticipant(entry, "static");
+    const norm = normalizeParticipant(entry, "static", env);
     if (!byId.has(norm.id)) byId.set(norm.id, norm);
   }
   const dynamicList = await fetchDynamicTokens(env);
@@ -369,15 +377,17 @@ async function listMergedParticipants(env) {
 }
 
 function getConfiguredRooms(env) {
+  const def = getDefaultRoom(env);
+  const fallback = [def, ...DEFAULT_ROOMS.filter((r) => r !== def)];
   const raw = env && typeof env.ROOMS === "string" ? env.ROOMS.trim() : "";
-  if (!raw) return [...DEFAULT_ROOMS];
+  if (!raw) return fallback;
   const rooms = [];
   for (const part of raw.split(",")) {
     const low = part.trim().toLowerCase();
-    const norm = low === "default" ? DEFAULT_ROOM : low;
+    const norm = low === "default" ? def : low;
     if (ROOM_RE.test(norm) && !rooms.includes(norm)) rooms.push(norm);
   }
-  return rooms.length > 0 ? rooms : [...DEFAULT_ROOMS];
+  return rooms.length > 0 ? rooms : fallback;
 }
 
 function sanitizeFilename(rawName) {
@@ -449,7 +459,7 @@ async function dispatchWebhooks(env, room, message, senderId) {
         p.id !== senderId &&
         p.webhook_url &&
         isSafeWebhookUrl(p.webhook_url) &&
-        canAccessRoom(p, room) &&
+        canAccessRoom(p, room, env) &&
         (message.to === "all" || message.to === p.id)
     );
     if (!targets.length) return;
@@ -535,7 +545,7 @@ export class ChatHistory extends DurableObject {
 
   async ensureLegacyImport(room) {
     this.ensureRoomSchema();
-    if (room !== DEFAULT_ROOM || !this.env.BOT_CHAT || this.legacyChecked) return;
+    if (room !== getDefaultRoom(this.env) || !this.env.BOT_CHAT || this.legacyChecked) return;
     if (!this.legacyImportPromise) {
       this.legacyImportPromise = this.ctx.blockConcurrencyWhile(async () => {
         if (this.sql.exec("SELECT done FROM legacy_import").toArray().length) {
@@ -743,7 +753,7 @@ export class ChatHistory extends DurableObject {
       return this.handlePresenceInternal(url);
     }
 
-    const room = parseRoom(url);
+    const room = parseRoom(url, this.env);
     if (!room) {
       return json({ ok: false, error: "invalid room" }, 400, this.env, req);
     }
@@ -762,7 +772,7 @@ export class ChatHistory extends DurableObject {
       if (authHeader !== null && authHeader.trim() !== "") {
         const me = await caller(this.env, req);
         if (!me) return json({ ok: false, error: "unauthorized" }, 401, this.env, req);
-        if (!canAccessRoom(me, room)) return json({ ok: false, error: "forbidden" }, 403, this.env, req);
+        if (!canAccessRoom(me, room, this.env)) return json({ ok: false, error: "forbidden" }, 403, this.env, req);
         authedMe = me;
       }
 
@@ -801,7 +811,7 @@ export class ChatHistory extends DurableObject {
 
     const me = await this.resolveCallerFromRequest(req);
     if (!me) return json({ ok: false, error: "unauthorized" }, 401, this.env, req);
-    if (!canAccessRoom(me, room)) return json({ ok: false, error: "forbidden" }, 403, this.env, req);
+    if (!canAccessRoom(me, room, this.env)) return json({ ok: false, error: "forbidden" }, 403, this.env, req);
     this.touchPresence(me.id);
 
     // GET /api/messages
@@ -960,7 +970,7 @@ export class ChatHistory extends DurableObject {
       });
 
       if (!duplicate) {
-        if (room !== DEFAULT_ROOM && !this.roomRegistered) {
+        if (room !== getDefaultRoom(this.env) && !this.roomRegistered) {
           this.roomRegistered = true;
           this.ctx.waitUntil(recordKnownRoom(this.env, room));
         }
@@ -1040,7 +1050,7 @@ export class ChatHistory extends DurableObject {
   }
 
   async webSocketMessage(ws, raw) {
-    const att = ws.deserializeAttachment() || { authed: false, room: DEFAULT_ROOM };
+    const att = ws.deserializeAttachment() || { authed: false, room: getDefaultRoom(this.env) };
     const text = typeof raw === "string" ? raw : decoder.decode(raw);
     let msg;
     try {
@@ -1068,7 +1078,7 @@ export class ChatHistory extends DurableObject {
         return;
       }
       const me = await authenticateToken(this.env, msg.token);
-      if (!me || !canAccessRoom(me, att.room)) {
+      if (!me || !canAccessRoom(me, att.room, this.env)) {
         try { ws.send(JSON.stringify({ type: "error", error: "unauthorized" })); } catch {}
         try { ws.close(4001, "unauthorized"); } catch {}
         return;
@@ -1132,6 +1142,7 @@ export default {
         {
           ok: true,
           version: VERSION,
+          default_room: getDefaultRoom(env),
           time: new Date().toISOString(),
           capabilities: {
             websocket: true,
@@ -1177,7 +1188,7 @@ export default {
 
     // GET /api/status?room=<room>
     if (url.pathname === "/api/status" && req.method === "GET") {
-      const room = parseRoom(url);
+      const room = parseRoom(url, env);
       if (!room) return json({ ok: false, error: "invalid room" }, 400, env, req);
 
       let touchId = null;
@@ -1191,7 +1202,7 @@ export default {
         if (!isStatusToken) {
           const me = await authenticateToken(env, token);
           if (!me) return json({ ok: false, error: "unauthorized" }, 401, env, req);
-          if (!canAccessRoom(me, room)) return json({ ok: false, error: "forbidden" }, 403, env, req);
+          if (!canAccessRoom(me, room, env)) return json({ ok: false, error: "forbidden" }, 403, env, req);
           touchId = me.id;
         }
       }
@@ -1200,7 +1211,7 @@ export default {
 
     // GET /api/ws?room=<room>
     if (url.pathname === "/api/ws" && req.method === "GET") {
-      const room = parseRoom(url);
+      const room = parseRoom(url, env);
       if (!room) return json({ ok: false, error: "invalid room" }, 400, env, req);
       const upgrade = req.headers.get("Upgrade") || "";
       if (upgrade.toLowerCase() !== "websocket") {
@@ -1214,11 +1225,11 @@ export default {
       (url.pathname === "/api/messages" && (req.method === "GET" || req.method === "POST")) ||
       (req.method === "PATCH" && /^\/api\/messages\/[^/]+$/.test(url.pathname))
     ) {
-      const room = parseRoom(url);
+      const room = parseRoom(url, env);
       if (!room) return json({ ok: false, error: "invalid room" }, 400, env, req);
       const me = await caller(env, req);
       if (!me) return json({ ok: false, error: "unauthorized" }, 401, env, req);
-      if (!canAccessRoom(me, room)) return json({ ok: false, error: "forbidden" }, 403, env, req);
+      if (!canAccessRoom(me, room, env)) return json({ ok: false, error: "forbidden" }, 403, env, req);
       return forwardToRoom(env, room, req, {
         "X-Lounge-Me": encodeURIComponent(JSON.stringify(me)),
       });
@@ -1234,11 +1245,11 @@ export default {
       }
 
       if (req.method === "POST") {
-        const room = parseRoom(url);
+        const room = parseRoom(url, env);
         if (!room) return json({ ok: false, error: "invalid room" }, 400, env, req);
         const me = await caller(env, req);
         if (!me) return json({ ok: false, error: "unauthorized" }, 401, env, req);
-        if (!canAccessRoom(me, room)) return json({ ok: false, error: "forbidden" }, 403, env, req);
+        if (!canAccessRoom(me, room, env)) return json({ ok: false, error: "forbidden" }, 403, env, req);
 
         const contentTypeHeader = (req.headers.get("Content-Type") || "").trim();
         const baseMediaType = contentTypeHeader.split(";")[0].trim().toLowerCase();
@@ -1326,7 +1337,7 @@ export default {
 
       const me = await caller(env, req);
       if (!me) return json({ ok: false, error: "unauthorized" }, 401, env, req);
-      if (!canAccessRoom(me, uploadRoom)) return json({ ok: false, error: "forbidden" }, 403, env, req);
+      if (!canAccessRoom(me, uploadRoom, env)) return json({ ok: false, error: "forbidden" }, 403, env, req);
 
       const key = `${uploadRoom}/${uploadFile}`;
       const obj = await env.UPLOADS.get(key);
@@ -1432,7 +1443,7 @@ export default {
               if (!validated.includes("*")) validated.push("*");
               continue;
             }
-            const norm = low === "default" ? DEFAULT_ROOM : low;
+            const norm = low === "default" ? getDefaultRoom(env) : low;
             if (!ROOM_RE.test(norm)) {
               return json({ ok: false, error: "invalid rooms" }, 400, env, req);
             }
@@ -1532,20 +1543,21 @@ export default {
     }
 
     if (url.pathname === "/api/rooms" && req.method === "GET") {
+      const def = getDefaultRoom(env);
       const configured = getConfiguredRooms(env);
       const known = await fetchKnownRooms(env);
       const combined = [...configured];
       for (const r of known) {
         if (ROOM_RE.test(r) && !combined.includes(r)) combined.push(r);
       }
-      const rooms = combined.filter((r) => canAccessRoom(me, r));
-      return json({ ok: true, rooms }, 200, env, req);
+      const rooms = combined.filter((r) => canAccessRoom(me, r, env));
+      return json({ ok: true, default_room: def, rooms }, 200, env, req);
     }
 
     if (url.pathname === "/api/bots" && req.method === "GET") {
-      const room = parseRoom(url);
+      const room = parseRoom(url, env);
       if (!room) return json({ ok: false, error: "invalid room" }, 400, env, req);
-      if (!canAccessRoom(me, room)) return json({ ok: false, error: "forbidden" }, 403, env, req);
+      if (!canAccessRoom(me, room, env)) return json({ ok: false, error: "forbidden" }, 403, env, req);
 
       const [participants, presenceRes] = await Promise.all([
         listMergedParticipants(env),

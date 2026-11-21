@@ -711,6 +711,8 @@
   var state = {
     token: "",
     me: null,
+    defaultRoom: "general",
+    hasExplicitRoom: false,
     room: "general",
     rooms: DEFAULT_ROOMS.slice(),
     roomGen: 0,
@@ -756,7 +758,8 @@
 
   function normalizeRoom(raw){
     var s = String(raw || "").trim().toLowerCase().replace(/^#+/, "");
-    if(!s || s === "default") return "general";
+    var def = (state && state.defaultRoom) ? state.defaultRoom : "general";
+    if(!s || s === "default") return def;
     return ROOM_RE.test(s) ? s : "";
   }
   function readInitialRoom(){
@@ -765,11 +768,15 @@
     if(m){
       try {
         var fromHash = normalizeRoom(decodeURIComponent(m[1]));
-        if(fromHash) return fromHash;
+        if(fromHash) return { room: fromHash, explicit: true };
       } catch(e){}
     }
-    var saved = normalizeRoom(lsGet(LS_ROOM_KEY));
-    return saved || "general";
+    var rawSaved = lsGet(LS_ROOM_KEY).trim();
+    if(rawSaved){
+      var saved = normalizeRoom(rawSaved);
+      if(saved) return { room: saved, explicit: true };
+    }
+    return { room: state.defaultRoom, explicit: false };
   }
   function syncRoomLocation(room){
     lsSet(LS_ROOM_KEY, room);
@@ -1676,6 +1683,9 @@
 
   function checkHealth(){
     return apiCall("GET", "/api/health", null, {attempts: 2, quietStatus: true}).then(function(j){
+      if(j && typeof j.default_room === "string" && ROOM_RE.test(j.default_room)){
+        state.defaultRoom = j.default_room;
+      }
       if(j && j.capabilities){
         state.capabilities = Object.assign({}, state.capabilities, j.capabilities);
         syncCapabilitiesUI();
@@ -1687,9 +1697,18 @@
     var gen = state.roomGen;
     return apiCall("GET", "/api/rooms", null, {attempts: 2, quietStatus: true}).then(function(j){
       if(gen !== state.roomGen) return;
+      if(j && typeof j.default_room === "string" && ROOM_RE.test(j.default_room)){
+        state.defaultRoom = j.default_room;
+      }
       if(j && Array.isArray(j.rooms) && j.rooms.length){
         state.rooms = j.rooms.filter(function(r){ return ROOM_RE.test(String(r)); });
-        if(!state.rooms.length) state.rooms = DEFAULT_ROOMS.slice();
+        if(!state.rooms.length) state.rooms = [state.defaultRoom];
+      }
+      if(!state.hasExplicitRoom && state.room !== state.defaultRoom){
+        state.room = state.defaultRoom;
+        if(state.rooms.indexOf(state.room) === -1) state.rooms.unshift(state.room);
+        updateComposerPlaceholder();
+        setStatus("", "正在连接 #" + state.room + "…");
       }
       renderRooms();
     }).catch(function(e){
@@ -2160,6 +2179,7 @@
     var clean = normalizeRoom(nextRoom);
     if(!clean) return;
     if(clean === state.room && state.started) return;
+    state.hasExplicitRoom = true;
     state.room = clean;
     if(state.rooms.indexOf(clean) === -1) state.rooms.push(clean);
     syncRoomLocation(clean);
@@ -2641,8 +2661,10 @@
   window.addEventListener("focus", clearUnread);
 
   /* ---------- boot ---------- */
-  state.room = readInitialRoom();
-  syncRoomLocation(state.room);
+  var initRoom = readInitialRoom();
+  state.room = initRoom.room;
+  state.hasExplicitRoom = initRoom.explicit;
+  if(state.hasExplicitRoom) syncRoomLocation(state.room);
   state.notifyEnabled = lsGet(LS_NOTIFY_KEY) === "1";
   syncNotifyBtn();
   syncCapabilitiesUI();
