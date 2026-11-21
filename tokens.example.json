@@ -1,12 +1,19 @@
 {
-  "0123456789abcdef0123456789abcdef0123456789abcdef": {
-    "id": "assistant",
-    "name": "Assistant",
-    "role": "bot"
-  },
   "fedcba9876543210fedcba9876543210fedcba9876543210": {
     "id": "alice",
     "name": "Alice",
-    "role": "human"
+    "role": "admin"
+  },
+  "0123456789abcdef0123456789abcdef0123456789abcdef": {
+    "id": "assistant",
+    "name": "Assistant",
+    "role": "bot",
+    "rooms": ["*"]
+  },
+  "00112233445566778899aabbccddeeff0011223344556677": {
+    "id": "ops-bot",
+    "name": "Ops Bot",
+    "role": "bot",
+    "rooms": ["ops"]
   }
 }

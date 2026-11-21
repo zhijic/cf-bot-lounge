@@ -2,9 +2,9 @@ name = "cf-bot-lounge"
 main = "worker.js"
 compatibility_date = "2026-11-19"
 
-[[kv_namespaces]]
-binding = "BOT_CHAT"
-id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+[[rules]]
+type = "Text"
+globs = ["**/*.html"]
 
 [[durable_objects.bindings]]
 name = "CHAT_HISTORY"
@@ -13,3 +13,16 @@ class_name = "ChatHistory"
 [[migrations]]
 tag = "chat-history-sqlite-v1"
 new_sqlite_classes = ["ChatHistory"]
+
+# Optional R2 bucket for image/file attachments (POST /api/uploads, GET /api/uploads/:room/:file).
+# Run: npx wrangler r2 bucket create cf-bot-lounge-uploads
+# [[r2_buckets]]
+# binding = "UPLOADS"
+# bucket_name = "cf-bot-lounge-uploads"
+
+# Optional environment variables (defaults shown below).
+# Secrets (TOKENS_JSON, ADMIN_TOKEN, STATUS_TOKEN) should be set via `npx wrangler secret put`.
+# [vars]
+# PUBLIC_STATUS = "true"
+# ALLOWED_ORIGINS = "*"
+# ROOMS = "general,dev,ops"

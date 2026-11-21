@@ -19,8 +19,13 @@
     --accent:#0e6b5e;
     --accent-soft:#e0efec;
     --danger:#b42318;
+    --danger-soft:#fef3f2;
     --warn:#b54708;
+    --warn-soft:#fffaeb;
     --ok:#12805c;
+    --ok-soft:#ecfdf3;
+    --code-bg:#f6f5f0;
+    --code-hd:#eae7df;
     --chip-bg:#ffffff;
     --chip-on-bg:#1c1b18;
     --chip-on-text:#ffffff;
@@ -38,9 +43,15 @@
       --own-bg:#0e6b5e;
       --own-text:#ffffff;
       --accent:#2dd4bf;
+      --accent-soft:rgba(45,212,191,.14);
       --danger:#f97066;
+      --danger-soft:rgba(249,112,102,.14);
       --warn:#fdb022;
+      --warn-soft:rgba(253,176,34,.14);
       --ok:#32d583;
+      --ok-soft:rgba(50,213,131,.14);
+      --code-bg:#141412;
+      --code-hd:#22221e;
       --chip-bg:#262622;
       --chip-on-bg:#eceae3;
       --chip-on-text:#131311;
@@ -56,65 +67,244 @@
     -webkit-font-smoothing:antialiased;
   }
   button,[role="button"],select,input,textarea{font:inherit}
-  button{min-height:40px}
-  .app{max-width:860px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;background:var(--bg)}
+  .app{max-width:880px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;background:var(--bg)}
 
   /* header */
   header{
     flex:0 0 auto;display:flex;align-items:center;gap:10px;
-    padding:10px 14px;border-bottom:1px solid var(--line);background:var(--surface);
+    padding:9px 14px;border-bottom:1px solid var(--line);background:var(--surface);
   }
-  .status-dot{width:9px;height:9px;border-radius:50%;background:#a8a49a;flex:0 0 auto}
+  .status-dot{width:9px;height:9px;border-radius:50%;background:#a8a49a;flex:0 0 auto;transition:background .2s}
   .status-dot.ok{background:var(--ok)}
+  .status-dot.warn{background:var(--warn)}
   .status-dot.bad{background:var(--danger)}
   .h-title{font-weight:700;font-size:16px;line-height:1.2;white-space:nowrap}
-  .h-sub{font-size:12px;color:var(--muted);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .h-sub{font-size:12px;color:var(--muted);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .h-left{min-width:0;flex:1 1 auto}
-  .h-actions{display:flex;gap:8px;flex:0 0 auto}
+  .h-actions{display:flex;gap:6px;flex:0 0 auto;align-items:center}
   .btn{
     border:1px solid var(--line);background:var(--surface);color:var(--text);
-    border-radius:999px;padding:0 14px;cursor:pointer;font-size:13px;font-weight:600;
-    display:inline-flex;align-items:center;gap:6px;min-height:38px;
+    border-radius:999px;padding:0 12px;cursor:pointer;font-size:12.5px;font-weight:600;
+    display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:34px;
+    transition:background .15s,border-color .15s,color .15s;
   }
-  .btn:active{transform:scale(.98)}
+  .btn:hover:not(:disabled){background:var(--surface-2)}
+  .btn:active:not(:disabled){transform:scale(.98)}
   .btn.primary{background:var(--own-bg);border-color:var(--own-bg);color:#fff}
+  .btn.primary:hover:not(:disabled){filter:brightness(1.06);background:var(--own-bg)}
+  .btn.danger{background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
   .btn.ghost{background:transparent}
+  .btn.active,.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .btn.sm{min-height:28px;padding:0 10px;font-size:12px}
   .btn:disabled{opacity:.5;cursor:not-allowed}
 
-  /* participants strip */
+  /* room switcher bar */
+  .room-bar{
+    flex:0 0 auto;display:flex;align-items:center;gap:6px;overflow-x:auto;
+    padding:7px 14px;border-bottom:1px solid var(--line);background:var(--surface);
+    scrollbar-width:none;
+  }
+  .room-bar::-webkit-scrollbar{display:none}
+  .room-list{display:contents}
+  .room-pill{
+    flex:0 0 auto;border:1px solid var(--line);background:var(--bg);color:var(--muted);
+    border-radius:999px;padding:0 11px;min-height:30px;font-size:12.5px;font-weight:600;
+    cursor:pointer;display:inline-flex;align-items:center;gap:3px;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .room-pill:hover{color:var(--text);border-color:var(--muted)}
+  .room-pill.active{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+  .room-pill .hash{opacity:.7;font-weight:700}
+  .room-add-btn{
+    flex:0 0 auto;border:1px dashed var(--line);background:transparent;color:var(--muted);
+    border-radius:999px;padding:0 10px;min-height:30px;font-size:12px;font-weight:600;cursor:pointer;
+  }
+  .room-add-btn:hover{color:var(--text);border-color:var(--muted)}
+  .room-add-form{
+    display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;
+  }
+  .room-add-form input{
+    width:130px;border:1px solid var(--accent);border-radius:999px;background:var(--bg);
+    color:var(--text);padding:0 10px;height:30px;font-size:12.5px;outline:none;
+  }
+  .room-add-err{font-size:11.5px;color:var(--danger);flex:0 0 auto;white-space:nowrap}
+
+  /* participants strip with presence */
   .people{
-    flex:0 0 auto;display:flex;gap:8px;align-items:center;overflow-x:auto;
-    padding:8px 14px;border-bottom:1px solid var(--line);background:var(--surface);
+    flex:0 0 auto;display:flex;gap:12px;align-items:center;overflow-x:auto;
+    padding:7px 14px;border-bottom:1px solid var(--line);background:var(--surface);
     scrollbar-width:none;
   }
   .people::-webkit-scrollbar{display:none}
-  .person{display:flex;align-items:center;gap:7px;flex:0 0 auto;font-size:13px;color:var(--muted)}
+  .person{display:flex;align-items:center;gap:7px;flex:0 0 auto;font-size:13px;color:var(--muted);cursor:default}
+  .avatar-wrap{position:relative;display:inline-flex;flex:0 0 auto}
   .avatar{
     width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
     font-size:12px;font-weight:700;color:#fff;background:#57534e;flex:0 0 auto;letter-spacing:.02em;
   }
+  .presence-dot{
+    position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;
+    border:2px solid var(--surface);background:#9ca3af;
+  }
+  .presence-dot.online{background:var(--ok)}
   .person b{color:var(--text);font-weight:600}
+
+  /* search / filter bar */
+  .filter-bar{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:8px 14px;border-bottom:1px solid var(--line);background:var(--surface-2);
+  }
+  .filter-bar input[type="search"]{
+    flex:1 1 170px;min-width:120px;height:34px;border:1px solid var(--line);border-radius:999px;
+    background:var(--surface);color:var(--text);padding:0 12px;font-size:13px;outline:none;
+  }
+  .filter-bar input[type="search"]:focus,.filter-bar select:focus{border-color:var(--accent)}
+  .filter-bar select{
+    height:34px;border:1px solid var(--line);border-radius:999px;background:var(--surface);
+    color:var(--text);padding:0 10px;font-size:12.5px;outline:none;max-width:160px;
+  }
+  .filter-count{font-size:12px;color:var(--muted);white-space:nowrap}
 
   /* messages */
   main{flex:1 1 auto;overflow-y:auto;padding:16px 14px 10px;overscroll-behavior:contain}
-  .day-note{text-align:center;font-size:12px;color:var(--muted);margin:6px 0 14px}
-  .msg{display:flex;gap:9px;margin:0 0 14px;max-width:100%}
+  .msg{display:flex;gap:9px;margin:0 0 14px;max-width:100%;transition:background .3s;border-radius:12px;padding:2px}
+  .msg.msg-filtered-out{display:none !important}
+  .msg.msg-flash{background:var(--accent-soft)}
   .msg .avatar{width:32px;height:32px;font-size:13px;margin-top:2px}
-  .msg-body{min-width:0;max-width:min(78%,620px)}
-  .msg-meta{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .msg-body{min-width:0;max-width:min(80%,650px)}
+  .msg-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px}
   .msg-name{font-size:13px;font-weight:700}
   .msg-time{font-size:11px;color:var(--muted)}
   .msg-to{font-size:11px;font-weight:600;color:var(--accent);background:var(--surface-2);border:1px solid var(--line);padding:1px 7px;border-radius:999px}
+  .msg-edited{font-size:11px;color:var(--muted);font-style:italic}
+  .msg-status{
+    display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;
+    padding:1px 7px;border-radius:999px;border:1px solid transparent;
+  }
+  .msg-status.status-thinking{background:var(--warn-soft);color:var(--warn);border-color:rgba(181,71,8,.22)}
+  .msg-status.status-done{background:var(--ok-soft);color:var(--ok);border-color:rgba(18,128,92,.22)}
+  .msg-status.status-error{background:var(--danger-soft);color:var(--danger);border-color:rgba(180,35,24,.24)}
+  .pulse-dot{
+    width:6px;height:6px;border-radius:50%;background:currentColor;
+    animation:pulseDot 1.2s ease-in-out infinite;
+  }
+  @keyframes pulseDot{
+    0%,100%{opacity:1;transform:scale(1)}
+    50%{opacity:.35;transform:scale(.75)}
+  }
+  .msg-action-btn{
+    border:none;background:transparent;color:var(--muted);font-size:11px;font-weight:600;
+    padding:1px 6px;border-radius:6px;cursor:pointer;opacity:.75;
+    transition:opacity .15s,background .15s,color .15s;
+  }
+  .msg:hover .msg-action-btn,.msg-action-btn:focus{opacity:1}
+  .msg-action-btn:hover{background:var(--surface-2);color:var(--text)}
+
   .bubble{
     background:var(--surface);border:1px solid var(--line);border-radius:4px 14px 14px 14px;
-    padding:9px 12px;font-size:15px;line-height:1.55;white-space:pre-wrap;word-break:break-word;
-    box-shadow:var(--shadow);
+    padding:9px 12px;font-size:14.5px;line-height:1.58;word-break:break-word;
+    box-shadow:var(--shadow);overflow-wrap:anywhere;
   }
   .msg.own{flex-direction:row-reverse}
   .msg.own .msg-body{display:flex;flex-direction:column;align-items:flex-end}
+  .msg.own .msg-meta{justify-content:flex-end}
   .msg.own .bubble{background:var(--own-bg);border-color:var(--own-bg);color:var(--own-text);border-radius:14px 4px 14px 14px}
-  .msg.own .msg-to{color:var(--own-text);background:rgba(255,255,255,.16);border-color:transparent}
-  .msg.pending .bubble{opacity:.65}
+  .msg.own .msg-to{color:var(--accent);background:var(--accent-soft);border-color:transparent}
+  .msg.pending .bubble{opacity:.68}
+
+  /* reply quote inside bubble */
+  .reply-quote{
+    display:block;width:100%;text-align:left;cursor:pointer;
+    border:none;border-left:3px solid var(--accent);border-radius:6px;
+    background:var(--surface-2);color:var(--text);
+    padding:5px 9px;margin:0 0 7px;font-size:12px;line-height:1.4;
+  }
+  .reply-quote:hover{filter:brightness(.97)}
+  .reply-quote-author{font-weight:700;color:var(--accent);margin-right:6px}
+  .reply-quote-text{color:var(--muted)}
+  .msg.own .reply-quote{background:rgba(0,0,0,.18);border-left-color:rgba(255,255,255,.72);color:#fff}
+  .msg.own .reply-quote-author{color:#ccfbf1}
+  .msg.own .reply-quote-text{color:rgba(255,255,255,.85)}
+
+  /* markdown content inside bubble */
+  .bubble-md p{margin:0 0 6px}
+  .bubble-md p:last-child{margin-bottom:0}
+  .bubble-md .md-h{font-weight:700;margin:6px 0 4px;line-height:1.35}
+  .bubble-md .md-h1{font-size:1.15em}
+  .bubble-md .md-h2{font-size:1.08em}
+  .bubble-md .md-h3{font-size:1.02em}
+  .bubble-md ul,.bubble-md ol{margin:5px 0;padding-left:20px}
+  .bubble-md li{margin:2px 0}
+  .bubble-md blockquote{
+    margin:6px 0;padding:4px 10px;border-left:3px solid var(--accent);
+    background:var(--surface-2);border-radius:0 6px 6px 0;color:var(--muted);
+  }
+  .msg.own .bubble-md blockquote{
+    border-left-color:rgba(255,255,255,.65);background:rgba(0,0,0,.18);color:rgba(255,255,255,.9);
+  }
+  .bubble-md code.md-ic{
+    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    font-size:.87em;padding:1px 5px;border-radius:5px;
+    background:var(--surface-2);border:1px solid var(--line);
+  }
+  .msg.own .bubble-md code.md-ic{
+    background:rgba(0,0,0,.22);border-color:rgba(255,255,255,.16);color:#fff;
+  }
+  .bubble-md a.md-link{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+  .msg.own .bubble-md a.md-link{color:#ccfbf1}
+  .md-code{
+    margin:7px 0;border:1px solid var(--line);border-radius:9px;overflow:hidden;
+    background:var(--code-bg);text-align:left;max-width:100%;
+  }
+  .md-code:last-child{margin-bottom:0}
+  .md-code-hd{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:4px 9px;background:var(--code-hd);border-bottom:1px solid var(--line);
+    font-size:11px;color:var(--muted);
+  }
+  .md-code-lang{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;text-transform:lowercase}
+  .md-copy-btn{
+    border:1px solid var(--line);background:var(--surface);color:var(--text);
+    border-radius:6px;padding:1px 8px;font-size:11px;font-weight:600;cursor:pointer;line-height:1.5;
+  }
+  .md-copy-btn:hover{background:var(--surface-2)}
+  .md-code pre{
+    margin:0;padding:9px 11px;overflow-x:auto;max-width:100%;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    font-size:12.5px;line-height:1.5;white-space:pre;color:var(--text);
+  }
+  .msg.own .md-code{background:rgba(10,16,15,.42);border-color:rgba(255,255,255,.2)}
+  .msg.own .md-code-hd{background:rgba(0,0,0,.28);border-bottom-color:rgba(255,255,255,.15);color:rgba(255,255,255,.8)}
+  .msg.own .md-code pre{color:#f3f4f6}
+  .msg.own .md-copy-btn{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.22);color:#fff}
+  .msg.own .md-copy-btn:hover{background:rgba(255,255,255,.24)}
+
+  .md-table-wrap{overflow-x:auto;max-width:100%;margin:7px 0}
+  .md-table-wrap:last-child{margin-bottom:0}
+  .md-table{border-collapse:collapse;font-size:13px;width:100%;min-width:220px}
+  .md-table th,.md-table td{border:1px solid var(--line);padding:5px 9px;text-align:left}
+  .md-table th{background:var(--surface-2);font-weight:700}
+  .msg.own .md-table th,.msg.own .md-table td{border-color:rgba(255,255,255,.25)}
+  .msg.own .md-table th{background:rgba(0,0,0,.22)}
+
+  /* attachments inside bubble */
+  .bubble-atts{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+  .bubble-atts:first-child{margin-top:0}
+  .att-img-wrap{
+    border-radius:8px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line);
+    min-height:40px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--muted);padding:6px 10px;max-width:100%;
+  }
+  .att-img-wrap.loaded{padding:0;background:transparent;border-color:transparent}
+  .att-img{display:block;max-width:100%;max-height:280px;border-radius:8px;cursor:pointer}
+  .att-file-btn{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+    background:var(--surface-2);color:var(--text);border-radius:8px;
+    padding:6px 10px;font-size:12.5px;font-weight:600;cursor:pointer;text-align:left;max-width:100%;
+  }
+  .att-file-btn:hover{filter:brightness(.96)}
+  .msg.own .att-file-btn{background:rgba(0,0,0,.2);border-color:rgba(255,255,255,.25);color:#fff}
+
   .empty{
     text-align:center;color:var(--muted);padding:48px 20px;font-size:14px;line-height:1.7;
   }
@@ -125,28 +315,59 @@
   /* composer */
   .composer{
     flex:0 0 auto;border-top:1px solid var(--line);background:var(--surface);
-    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    padding:8px 12px calc(10px + env(safe-area-inset-bottom));
   }
-  .to-row{display:flex;gap:7px;align-items:center;overflow-x:auto;padding-bottom:9px;scrollbar-width:none}
+  .typing-bar{
+    font-size:12px;color:var(--accent);padding:0 2px 6px;display:flex;align-items:center;gap:6px;
+  }
+  .reply-bar{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:6px 10px;margin-bottom:8px;border-radius:9px;
+    background:var(--surface-2);border-left:3px solid var(--accent);font-size:12.5px;
+  }
+  .reply-bar-info{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+  .reply-bar-info b{color:var(--text)}
+  .icon-close{
+    border:none;background:transparent;color:var(--muted);cursor:pointer;
+    font-size:16px;line-height:1;padding:2px 6px;border-radius:6px;flex:0 0 auto;
+  }
+  .icon-close:hover{background:var(--line);color:var(--text)}
+  .attach-bar{
+    display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;
+  }
+  .attach-chip{
+    display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+    background:var(--surface-2);border-radius:999px;padding:3px 9px;font-size:12px;color:var(--text);
+  }
+  .attach-chip button{border:none;background:transparent;color:var(--muted);cursor:pointer;padding:0 2px;font-weight:700}
+  .attach-chip button:hover{color:var(--danger)}
+  .to-row{display:flex;gap:7px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
   .to-row::-webkit-scrollbar{display:none}
   .to-label{font-size:12px;color:var(--muted);flex:0 0 auto;font-weight:600}
   .chip{
     flex:0 0 auto;border:1px solid var(--line);background:var(--chip-bg);color:var(--text);
-    border-radius:999px;padding:0 13px;min-height:36px;font-size:13px;font-weight:600;cursor:pointer;
+    border-radius:999px;padding:0 12px;min-height:33px;font-size:12.5px;font-weight:600;cursor:pointer;
     display:inline-flex;align-items:center;gap:6px;
   }
   .chip[aria-pressed="true"]{background:var(--chip-on-bg);color:var(--chip-on-text);border-color:var(--chip-on-bg)}
   .chip .dot{width:7px;height:7px;border-radius:50%}
-  .quick-row{display:flex;gap:7px;overflow-x:auto;padding-bottom:9px;scrollbar-width:none}
+  .quick-row{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
   .quick-row::-webkit-scrollbar{display:none}
   .quick{
     flex:0 0 auto;border:1px dashed var(--line);background:transparent;color:var(--muted);
-    border-radius:8px;padding:0 10px;min-height:32px;font-size:12px;cursor:pointer;
+    border-radius:8px;padding:0 10px;min-height:30px;font-size:12px;cursor:pointer;
   }
+  .quick:hover{color:var(--text);border-color:var(--muted)}
   .input-row{display:flex;gap:8px;align-items:flex-end}
+  .attach-btn{
+    flex:0 0 auto;width:42px;height:42px;border-radius:50%;border:1px solid var(--line);
+    background:var(--bg);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;padding:0;
+  }
+  .attach-btn:hover{color:var(--text);border-color:var(--accent)}
   textarea{
     flex:1 1 auto;resize:none;border:1px solid var(--line);border-radius:12px;background:var(--bg);
-    color:var(--text);padding:10px 12px;font-size:15px;line-height:1.45;max-height:120px;min-height:44px;outline:none;
+    color:var(--text);padding:10px 12px;font-size:15px;line-height:1.45;max-height:130px;min-height:44px;outline:none;
   }
   textarea:focus{border-color:var(--accent)}
   .send-btn{
@@ -155,38 +376,76 @@
   }
   .send-btn:disabled{opacity:.45;cursor:not-allowed}
   .send-btn svg{width:19px;height:19px}
-  .hint{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.5}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
 
-  /* token gate / modal */
+  /* modals */
   .overlay{
     position:fixed;inset:0;background:rgba(10,10,8,.55);display:none;align-items:center;justify-content:center;
-    padding:18px;z-index:50;
+    padding:16px;z-index:50;
   }
   .overlay.open{display:flex}
   .card{
-    width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:16px;
-    padding:22px 20px;box-shadow:var(--shadow);
+    width:100%;max-width:430px;max-height:90dvh;overflow-y:auto;
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    padding:20px;box-shadow:var(--shadow);
   }
-  .card h2{margin:0 0 6px;font-size:18px}
-  .card p{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.65}
-  .card label{font-size:13px;font-weight:700;display:block;margin-bottom:6px}
-  .card input[type="password"],.card input[type="text"]{
+  .card.wide{max-width:580px}
+  .card-hd{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .card h2{margin:0;font-size:18px}
+  .card h3{margin:16px 0 10px;font-size:14.5px;border-top:1px solid var(--line);padding-top:14px}
+  .card p{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.6}
+  .card label{font-size:12.5px;font-weight:700;display:block;margin-bottom:5px}
+  .card input[type="password"],.card input[type="text"],.card input[type="url"],.card select{
     width:100%;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);
-    padding:11px 12px;font-size:14px;min-height:44px;outline:none;
+    padding:9px 11px;font-size:14px;min-height:40px;outline:none;
   }
-  .card input:focus{border-color:var(--accent)}
+  .card input:focus,.card select:focus{border-color:var(--accent)}
   .card .row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
-  .card .row .btn{flex:1 1 auto;justify-content:center;min-height:44px}
+  .card .row .btn{flex:1 1 auto;justify-content:center;min-height:42px}
   .show-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:10px;cursor:pointer;user-select:none}
   .show-row input[type="checkbox"]{width:17px;height:17px;margin:0;accent-color:var(--own-bg);cursor:pointer;flex:0 0 auto}
   .form-err{display:none;margin-top:10px;font-size:13px;color:var(--danger);line-height:1.5}
   .form-err.show{display:block}
-  .masked{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-bottom:4px;word-break:break-all}
+  .masked{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-bottom:10px;word-break:break-all}
+
+  /* admin modal */
+  .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .admin-grid .full{grid-column:1 / -1}
+  .token-list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .token-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg);
+  }
+  .token-meta{min-width:0;flex:1 1 220px}
+  .token-meta-top{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:13.5px}
+  .token-meta-sub{font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-all}
+  .badge{
+    display:inline-flex;align-items:center;font-size:11px;font-weight:700;
+    padding:1px 7px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  }
+  .badge.dynamic{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+  .badge.static{background:var(--surface-2);color:var(--muted)}
+  .badge.role{background:var(--surface-2);color:var(--text)}
+  .new-token-box{
+    background:var(--ok-soft);border:1px solid var(--ok);border-radius:10px;padding:12px;margin-bottom:12px;
+  }
+  .new-token-warn{font-size:12px;font-weight:700;color:var(--ok);margin-bottom:6px}
+  .new-token-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .new-token-val{
+    flex:1 1 200px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+    font-size:12.5px;background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    padding:7px 9px;word-break:break-all;user-select:all;
+  }
+
   .hidden{display:none !important}
-  @media (max-width:560px){
+  @media (max-width:600px){
+    header{padding:8px 10px;gap:7px}
     .h-sub{display:none}
-    .msg-body{max-width:84%}
-    .btn span.lbl{display:none}
+    .h-actions{gap:4px}
+    .h-actions .btn{padding:0 9px;min-height:34px}
+    .h-actions .btn span.lbl{display:none}
+    .msg-body{max-width:86%}
+    .admin-grid{grid-template-columns:1fr}
   }
 </style>
 </head>
@@ -199,18 +458,51 @@
       <div class="h-sub" id="statusText">正在连接消息接口…</div>
     </div>
     <div class="h-actions">
+      <button class="btn ghost" id="searchBtn" type="button" title="搜索与导出" aria-pressed="false">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span class="lbl">搜索</span>
+      </button>
+      <button class="btn ghost" id="notifyBtn" type="button" title="桌面通知" aria-pressed="false">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="lbl">通知</span>
+      </button>
+      <button class="btn ghost hidden" id="adminBtn" type="button" title="管理 Token">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="lbl">管理</span>
+      </button>
       <button class="btn ghost" id="refreshBtn" type="button" title="刷新消息">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         <span class="lbl">刷新</span>
       </button>
-      <button class="btn" id="tokenBtn" type="button">
+      <button class="btn" id="tokenBtn" type="button" title="设置 Token">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12 21 2"/><path d="M16 7l3 3"/></svg>
         <span class="lbl">Token</span>
       </button>
     </div>
   </header>
 
+  <nav class="room-bar" id="roomBar" aria-label="房间切换">
+    <span class="room-list" id="roomList"></span>
+    <button class="room-add-btn" id="addRoomBtn" type="button">+ 房间</button>
+    <form class="room-add-form hidden" id="addRoomForm">
+      <input type="text" id="newRoomInput" placeholder="例如 ops-2" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="新房间名称" />
+      <button class="btn sm primary" type="submit">进入</button>
+      <button class="btn sm ghost" id="cancelAddRoomBtn" type="button">取消</button>
+    </form>
+    <span class="room-add-err hidden" id="roomAddErr"></span>
+  </nav>
+
   <div class="people" id="peopleBar" aria-label="参与者"></div>
+
+  <div class="filter-bar hidden" id="filterBar" role="search" aria-label="搜索与筛选消息">
+    <input type="search" id="searchInput" placeholder="搜索当前房间消息…" autocomplete="off" />
+    <select id="filterSender" aria-label="按发送者筛选">
+      <option value="">全部成员</option>
+    </select>
+    <span class="filter-count" id="filterCount"></span>
+    <button class="btn sm ghost hidden" id="clearFilterBtn" type="button">清除</button>
+    <button class="btn sm" id="exportMdBtn" type="button">导出 MD</button>
+  </div>
 
   <main id="msgList" aria-live="polite">
     <div class="empty" id="emptyState">
@@ -220,6 +512,12 @@
   </main>
 
   <div class="composer">
+    <div class="typing-bar hidden" id="typingBar" aria-live="polite"></div>
+    <div class="reply-bar hidden" id="replyBar">
+      <div class="reply-bar-info" id="replyBarInfo"></div>
+      <button class="icon-close" id="cancelReplyBtn" type="button" aria-label="取消回复">&times;</button>
+    </div>
+    <div class="attach-bar hidden" id="attachBar"></div>
     <div class="to-row" role="group" aria-label="发给谁">
       <span class="to-label">发给</span>
       <span id="toChips" style="display:contents"></span>
@@ -231,12 +529,16 @@
       <button class="quick" type="button" data-fill="/help">/help</button>
     </div>
     <div class="input-row">
-      <textarea id="input" rows="1" placeholder="写消息… 输入 @名字 也能指定接收对象" enterkeyhint="send"></textarea>
+      <input type="file" id="fileInput" class="hidden" multiple accept="image/png,image/jpeg,image/webp,image/gif,text/plain,application/pdf,application/json" />
+      <button class="attach-btn hidden" id="attachBtn" type="button" title="上传图片或文件（支持 Ctrl+V 粘贴图片）" aria-label="上传附件">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </button>
+      <textarea id="input" rows="1" placeholder="发消息到 #general… 输入 @名字 也能指定接收对象" enterkeyhint="send"></textarea>
       <button class="send-btn" id="sendBtn" type="button" aria-label="发送">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/></svg>
       </button>
     </div>
-    <div class="hint">Enter 发送 · Shift+Enter 换行 · 每 5 秒自动拉一次新消息，新消息偶尔晚一拍到是正常的</div>
+    <div class="hint" id="composerHint">Enter 发送 · Shift+Enter 换行 · 实时 WebSocket 推送，断线自动降级轮询</div>
   </div>
 </div>
 
@@ -258,11 +560,86 @@
   </div>
 </div>
 
+<!-- Admin Token Management modal (only visible to role === "admin") -->
+<div class="overlay" id="adminOverlay" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
+  <div class="card wide">
+    <div class="card-hd">
+      <h2 id="adminTitle">管理参与者 Token</h2>
+      <button class="icon-close" id="closeAdminBtn" type="button" aria-label="关闭">&times;</button>
+    </div>
+    <p>查看静态与动态参与者元数据，可随时签发或吊销动态 Token（仅存储 SHA-256 哈希，明文只在签发瞬间显示一次）。</p>
+
+    <div class="new-token-box hidden" id="newTokenBox">
+      <div class="new-token-warn">新 Token 已签发（仅显示这一次，请立即复制保存）：</div>
+      <div class="new-token-row">
+        <div class="new-token-val" id="newTokenVal"></div>
+        <button class="btn sm primary" id="copyNewTokenBtn" type="button">复制 Token</button>
+      </div>
+    </div>
+
+    <div class="form-err" id="adminErr"></div>
+    <div class="token-list" id="adminTokenList"></div>
+
+    <h3>签发新动态 Token</h3>
+    <form id="issueTokenForm">
+      <div class="admin-grid">
+        <div>
+          <label for="admId">参与者 ID *</label>
+          <input type="text" id="admId" placeholder="例如 ops-bot" maxlength="32" required autocomplete="off" />
+        </div>
+        <div>
+          <label for="admName">显示名称</label>
+          <input type="text" id="admName" placeholder="例如 Ops Bot" maxlength="40" autocomplete="off" />
+        </div>
+        <div>
+          <label for="admRole">角色</label>
+          <select id="admRole">
+            <option value="bot">bot</option>
+            <option value="human">human</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+        <div>
+          <label for="admRooms">允许房间（逗号分隔，留空不限）</label>
+          <input type="text" id="admRooms" placeholder="例如 general,ops" autocomplete="off" />
+        </div>
+        <div class="full">
+          <label for="admWebhookUrl">Outbound Webhook URL（可选，仅限 https://）</label>
+          <input type="url" id="admWebhookUrl" placeholder="https://example.com/webhook" autocomplete="off" />
+        </div>
+        <div class="full">
+          <label for="admWebhookSecret">Webhook HMAC Secret（可选）</label>
+          <input type="text" id="admWebhookSecret" placeholder="用于生成 X-Bot-Lounge-Signature" autocomplete="off" />
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="issueTokenBtn" type="submit">签发动态 Token</button>
+        <button class="btn" id="refreshAdminBtn" type="button">刷新列表</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 (function(){
   "use strict";
   var API = (window.location.protocol === "http:" || window.location.protocol === "https:") ? window.location.origin : "";
   var LS_KEY = "botchat_token_v1";
+  var LS_ROOM_KEY = "botchat_room_v2";
+  var LS_NOTIFY_KEY = "botchat_notify_v2";
+  var DEFAULT_ROOMS = ["general", "dev", "ops"];
+  var ROOM_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+  var ID_RE = /^[a-z0-9][a-z0-9_-]{0,31}$/i;
+  var ALLOWED_UPLOAD_TYPES = {
+    "image/png": true,
+    "image/jpeg": true,
+    "image/webp": true,
+    "image/gif": true,
+    "text/plain": true,
+    "application/pdf": true,
+    "application/json": true
+  };
+  var MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
   var PALETTE = [
     "#0e6b5e", "#1d4ed8", "#b7791f", "#c2410c",
     "#6d28d9", "#be185d", "#15803d", "#334155"
@@ -272,11 +649,36 @@
     dot: document.getElementById("statusDot"),
     statusText: document.getElementById("statusText"),
     apiHost: document.getElementById("apiHostText"),
+    roomList: document.getElementById("roomList"),
+    addRoomBtn: document.getElementById("addRoomBtn"),
+    addRoomForm: document.getElementById("addRoomForm"),
+    newRoomInput: document.getElementById("newRoomInput"),
+    cancelAddRoomBtn: document.getElementById("cancelAddRoomBtn"),
+    roomAddErr: document.getElementById("roomAddErr"),
     people: document.getElementById("peopleBar"),
+    searchBtn: document.getElementById("searchBtn"),
+    notifyBtn: document.getElementById("notifyBtn"),
+    adminBtn: document.getElementById("adminBtn"),
+    refresh: document.getElementById("refreshBtn"),
+    tokenBtn: document.getElementById("tokenBtn"),
+    filterBar: document.getElementById("filterBar"),
+    searchInput: document.getElementById("searchInput"),
+    filterSender: document.getElementById("filterSender"),
+    filterCount: document.getElementById("filterCount"),
+    clearFilterBtn: document.getElementById("clearFilterBtn"),
+    exportMdBtn: document.getElementById("exportMdBtn"),
     list: document.getElementById("msgList"),
     empty: document.getElementById("emptyState"),
+    typingBar: document.getElementById("typingBar"),
+    replyBar: document.getElementById("replyBar"),
+    replyBarInfo: document.getElementById("replyBarInfo"),
+    cancelReplyBtn: document.getElementById("cancelReplyBtn"),
+    attachBar: document.getElementById("attachBar"),
+    fileInput: document.getElementById("fileInput"),
+    attachBtn: document.getElementById("attachBtn"),
     input: document.getElementById("input"),
     send: document.getElementById("sendBtn"),
+    composerHint: document.getElementById("composerHint"),
     toChips: document.getElementById("toChips"),
     overlay: document.getElementById("tokenOverlay"),
     tokenInput: document.getElementById("tokenInput"),
@@ -286,8 +688,22 @@
     cancelToken: document.getElementById("cancelTokenBtn"),
     clearToken: document.getElementById("clearTokenBtn"),
     currentMasked: document.getElementById("currentMasked"),
-    refresh: document.getElementById("refreshBtn"),
-    tokenBtn: document.getElementById("tokenBtn")
+    adminOverlay: document.getElementById("adminOverlay"),
+    closeAdminBtn: document.getElementById("closeAdminBtn"),
+    newTokenBox: document.getElementById("newTokenBox"),
+    newTokenVal: document.getElementById("newTokenVal"),
+    copyNewTokenBtn: document.getElementById("copyNewTokenBtn"),
+    adminErr: document.getElementById("adminErr"),
+    adminTokenList: document.getElementById("adminTokenList"),
+    issueTokenForm: document.getElementById("issueTokenForm"),
+    admId: document.getElementById("admId"),
+    admName: document.getElementById("admName"),
+    admRole: document.getElementById("admRole"),
+    admRooms: document.getElementById("admRooms"),
+    admWebhookUrl: document.getElementById("admWebhookUrl"),
+    admWebhookSecret: document.getElementById("admWebhookSecret"),
+    issueTokenBtn: document.getElementById("issueTokenBtn"),
+    refreshAdminBtn: document.getElementById("refreshAdminBtn")
   };
 
   if(els.apiHost) els.apiHost.textContent = (window.location.host || "当前服务");
@@ -295,22 +711,74 @@
   var state = {
     token: "",
     me: null,
+    room: "general",
+    rooms: DEFAULT_ROOMS.slice(),
+    roomGen: 0,
     bots: [],
+    capabilities: { uploads: false, websocket: true, rooms: true, admin: false },
     selectedTo: "all",
+    replyTo: null,
+    pendingAttachments: [],
+    uploadingCount: 0,
+    lastSeq: 0,
     lastId: null,
+    initialLoaded: false,
     knownIds: {},
+    messagesById: {},
+    messagesOrder: [],
     pendingTemps: [],
     outbox: [],
     flushing: false,
+    ws: null,
+    wsGen: 0,
+    wsAuthed: false,
+    wsBackoff: 1000,
+    wsReconnectTimer: null,
+    wsHeartbeatTimer: null,
+    lastTypingSent: 0,
+    typingUsers: {},
     pollTimer: null,
-    healthTimer: null,
-    sending: false,
+    presenceTimer: null,
+    unread: 0,
+    notifyEnabled: false,
+    filterText: "",
+    filterSender: "",
+    blobUrls: [],
     started: false
   };
 
-  function getToken(){ try { return localStorage.getItem(LS_KEY) || ""; } catch(e){ return ""; } }
-  function setToken(t){ try { if(t) localStorage.setItem(LS_KEY, t); else localStorage.removeItem(LS_KEY); } catch(e){} }
+  /* ---------- storage & basic helpers ---------- */
+  function lsGet(k){ try { return localStorage.getItem(k) || ""; } catch(e){ return ""; } }
+  function lsSet(k, v){ try { if(v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch(e){} }
+  function getToken(){ return lsGet(LS_KEY); }
+  function setToken(t){ lsSet(LS_KEY, t); }
   function mask(t){ if(!t) return ""; if(t.length <= 8) return "••••••••"; return t.slice(0,4) + "••••••••" + t.slice(-2); }
+
+  function normalizeRoom(raw){
+    var s = String(raw || "").trim().toLowerCase().replace(/^#+/, "");
+    if(!s || s === "default") return "general";
+    return ROOM_RE.test(s) ? s : "";
+  }
+  function readInitialRoom(){
+    var h = String(window.location.hash || "");
+    var m = h.match(/^#room=([^&]+)/i);
+    if(m){
+      try {
+        var fromHash = normalizeRoom(decodeURIComponent(m[1]));
+        if(fromHash) return fromHash;
+      } catch(e){}
+    }
+    var saved = normalizeRoom(lsGet(LS_ROOM_KEY));
+    return saved || "general";
+  }
+  function syncRoomLocation(room){
+    lsSet(LS_ROOM_KEY, room);
+    var nextHash = "#room=" + encodeURIComponent(room);
+    if(window.location.hash !== nextHash){
+      try { window.history.replaceState(null, "", nextHash); }
+      catch(e){ try { window.location.hash = nextHash; } catch(e2){} }
+    }
+  }
 
   function colorForId(id){
     var s = String(id || "");
@@ -344,6 +812,22 @@
     if(sameDay) return hh+":"+mm;
     return (d.getMonth()+1)+"/"+d.getDate()+" "+hh+":"+mm;
   }
+  function fmtRelativePresence(online, lastSeenAt){
+    if(online) return "在线";
+    if(!lastSeenAt) return "未活跃";
+    var d = parseTs(lastSeenAt);
+    if(!d) return "未活跃";
+    var sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+    if(sec < 60) return "最后活跃 刚刚";
+    if(sec < 3600) return "最后活跃 " + Math.floor(sec / 60) + " 分钟前";
+    if(sec < 86400) return "最后活跃 " + Math.floor(sec / 3600) + " 小时前";
+    return "最后活跃 " + Math.floor(sec / 86400) + " 天前";
+  }
+  function fmtBytes(n){
+    if(!n || n < 1024) return (n || 0) + " B";
+    if(n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+  }
   function esc(s){
     return String(s==null?"":s).replace(/[&<>"']/g, function(c){
       return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
@@ -352,6 +836,231 @@
   function escapeRegExp(s){
     return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
+  function copyText(text, btn, origLabel){
+    function done(){
+      if(!btn) return;
+      btn.textContent = "已复制";
+      setTimeout(function(){ btn.textContent = origLabel; }, 1600);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(function(){ fallbackCopy(text, done); });
+    } else {
+      fallbackCopy(text, done);
+    }
+  }
+  function fallbackCopy(text, cb){
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      if(cb) cb();
+    } catch(e){}
+  }
+  function findMsgEl(mid){
+    var target = String(mid);
+    var nodes = els.list.querySelectorAll(".msg");
+    for(var i = 0; i < nodes.length; i++){
+      if(nodes[i].getAttribute("data-mid") === target) return nodes[i];
+    }
+    return null;
+  }
+  function revokeBlobUrls(){
+    for(var i = 0; i < state.blobUrls.length; i++){
+      try { URL.revokeObjectURL(state.blobUrls[i]); } catch(e){}
+    }
+    state.blobUrls = [];
+  }
+
+  /* ---------- safe zero-dependency Markdown renderer ----------
+     STRICTLY escapes HTML first (esc(raw)), then parses fenced code blocks,
+     tables, blockquotes, lists, headings, inline code, safe http(s) links,
+     bold, italic, and strikethrough. Zero XSS surface. */
+  function isSafeHttpUrl(escapedUrl){
+    if(!escapedUrl || !/^https?:\/\//i.test(escapedUrl)) return false;
+    if(/[\s"'<>`]|&quot;|&#39;|&lt;|&gt;/i.test(escapedUrl)) return false;
+    return true;
+  }
+  function renderInline(escapedLine){
+    var inlineCodes = [];
+    var links = [];
+    var s = escapedLine.replace(/`([^`\n]+)`/g, function(_, code){
+      var idx = inlineCodes.length;
+      inlineCodes.push('<code class="md-ic">' + code + '</code>');
+      return "\u0000IC" + idx + "\u0000";
+    });
+    // [label](https://...) — only allow http:// or https://
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/(?:(?!&(?:quot|#39|lt|gt);)[^\s)])+)\)/g, function(full, label, url){
+      if(!isSafeHttpUrl(url)) return full;
+      var idx = links.length;
+      links.push('<a class="md-link" href="' + url + '" target="_blank" rel="noopener noreferrer">' + formatEmphasis(label) + '</a>');
+      return "\u0000LN" + idx + "\u0000";
+    });
+    // Auto-link bare http(s) URLs
+    s = s.replace(/(https?:\/\/(?:(?!&(?:quot|#39|lt|gt);)[^\s<])+)/g, function(match){
+      var url = match;
+      var trail = "";
+      var trimRe = /[.,;:!?)\]}。，；：！？）】》]+$/;
+      var tm = url.match(trimRe);
+      if(tm){
+        trail = tm[0];
+        url = url.slice(0, url.length - trail.length);
+      }
+      if(!isSafeHttpUrl(url)) return match;
+      var idx = links.length;
+      links.push('<a class="md-link" href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>');
+      return "\u0000LN" + idx + "\u0000" + trail;
+    });
+    s = formatEmphasis(s);
+    s = s.replace(/\u0000LN(\d+)\u0000/g, function(_, i){ return links[Number(i)] || ""; });
+    s = s.replace(/\u0000IC(\d+)\u0000/g, function(_, i){ return inlineCodes[Number(i)] || ""; });
+    return s;
+  }
+  function formatEmphasis(s){
+    s = s.replace(/\*\*\*([^*\n]+?)\*\*\*/g, "<strong><em>$1</em></strong>");
+    s = s.replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>");
+    s = s.replace(/~~([^~\n]+?)~~/g, "<del>$1</del>");
+    s = s.replace(/(^|[^*])\*([^\s*](?:[^*\n]*?[^\s*])?)\*(?!\*)/g, "$1<em>$2</em>");
+    return s;
+  }
+  function splitTableRow(line){
+    var trimmed = line.trim();
+    if(trimmed.charAt(0) === "|") trimmed = trimmed.slice(1);
+    if(trimmed.charAt(trimmed.length - 1) === "|") trimmed = trimmed.slice(0, -1);
+    return trimmed.split("|").map(function(c){ return c.trim(); });
+  }
+  function isTableSep(line){
+    return /^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$/.test(line)
+        || /^\s*\|\s*:?-{3,}:?\s*\|\s*$/.test(line);
+  }
+  function renderMarkdown(raw){
+    if(raw == null || raw === "") return "";
+    // Step 1: Escape ALL HTML strictly before any Markdown transformation (and strip NULs)
+    var escaped = esc(String(raw)).replace(/\u0000/g, "").replace(/\r\n?/g, "\n");
+    var codeBlocks = [];
+    // Step 2: Extract fenced code blocks
+    escaped = escaped.replace(/```([a-zA-Z0-9_+-]*)[ \t]*\n?([\s\S]*?)```/g, function(_, lang, body){
+      var idx = codeBlocks.length;
+      var cleanBody = body.replace(/\n$/, "");
+      var label = lang ? esc(lang) : "code";
+      codeBlocks.push(
+        '<div class="md-code">'
+        + '<div class="md-code-hd"><span class="md-code-lang">' + label + '</span>'
+        + '<button class="md-copy-btn" type="button">复制</button></div>'
+        + '<pre><code>' + cleanBody + '</code></pre></div>'
+      );
+      return "\n\u0000CB" + idx + "\u0000\n";
+    });
+
+    // Step 3: Block-level parsing
+    var lines = escaped.split("\n");
+    var out = [];
+    var i = 0;
+    while(i < lines.length){
+      var line = lines[i];
+      if(line.trim() === ""){
+        i++;
+        continue;
+      }
+      var cbMatch = line.match(/^\u0000CB(\d+)\u0000$/);
+      if(cbMatch){
+        out.push(codeBlocks[Number(cbMatch[1])] || "");
+        i++;
+        continue;
+      }
+      // Table: header line with | followed by separator line
+      if(line.indexOf("|") !== -1 && i + 1 < lines.length && isTableSep(lines[i + 1])){
+        var headers = splitTableRow(line);
+        var sepCells = splitTableRow(lines[i + 1]);
+        var aligns = sepCells.map(function(c){
+          var left = c.charAt(0) === ":";
+          var right = c.charAt(c.length - 1) === ":";
+          if(left && right) return "center";
+          if(right) return "right";
+          return "left";
+        });
+        var tHtml = '<div class="md-table-wrap"><table class="md-table"><thead><tr>';
+        for(var h = 0; h < headers.length; h++){
+          tHtml += '<th style="text-align:' + (aligns[h] || "left") + '">' + renderInline(headers[h]) + '</th>';
+        }
+        tHtml += '</tr></thead><tbody>';
+        i += 2;
+        while(i < lines.length && lines[i].trim() !== "" && lines[i].indexOf("|") !== -1 && !/^\u0000CB\d+\u0000$/.test(lines[i])){
+          var cells = splitTableRow(lines[i]);
+          tHtml += '<tr>';
+          for(var c = 0; c < headers.length; c++){
+            tHtml += '<td style="text-align:' + (aligns[c] || "left") + '">' + renderInline(cells[c] || "") + '</td>';
+          }
+          tHtml += '</tr>';
+          i++;
+        }
+        tHtml += '</tbody></table></div>';
+        out.push(tHtml);
+        continue;
+      }
+      // Blockquote (escaped '>' is '&gt;')
+      if(/^&gt;(?: |$)/.test(line)){
+        var qLines = [];
+        while(i < lines.length && /^&gt;(?: |$)/.test(lines[i])){
+          qLines.push(renderInline(lines[i].replace(/^&gt; ?/, "")));
+          i++;
+        }
+        out.push("<blockquote>" + qLines.join("<br>") + "</blockquote>");
+        continue;
+      }
+      // Unordered list
+      if(/^[-*] +/.test(line)){
+        var ulItems = [];
+        while(i < lines.length && /^[-*] +/.test(lines[i])){
+          ulItems.push("<li>" + renderInline(lines[i].replace(/^[-*] +/, "")) + "</li>");
+          i++;
+        }
+        out.push("<ul>" + ulItems.join("") + "</ul>");
+        continue;
+      }
+      // Ordered list
+      if(/^\d+\. +/.test(line)){
+        var olItems = [];
+        while(i < lines.length && /^\d+\. +/.test(lines[i])){
+          olItems.push("<li>" + renderInline(lines[i].replace(/^\d+\. +/, "")) + "</li>");
+          i++;
+        }
+        out.push("<ol>" + olItems.join("") + "</ol>");
+        continue;
+      }
+      // Compact headings
+      var hMatch = line.match(/^(#{1,3}) +(.*)$/);
+      if(hMatch){
+        out.push('<div class="md-h md-h' + hMatch[1].length + '">' + renderInline(hMatch[2]) + '</div>');
+        i++;
+        continue;
+      }
+      // Paragraph (group consecutive plain lines)
+      var pLines = [];
+      while(
+        i < lines.length &&
+        lines[i].trim() !== "" &&
+        !/^\u0000CB\d+\u0000$/.test(lines[i]) &&
+        !/^&gt;(?: |$)/.test(lines[i]) &&
+        !/^[-*] +/.test(lines[i]) &&
+        !/^\d+\. +/.test(lines[i]) &&
+        !/^#{1,3} +/.test(lines[i]) &&
+        !(lines[i].indexOf("|") !== -1 && i + 1 < lines.length && isTableSep(lines[i + 1]))
+      ){
+        pLines.push(renderInline(lines[i]));
+        i++;
+      }
+      if(pLines.length) out.push("<p>" + pLines.join("<br>") + "</p>");
+    }
+    return out.join("");
+  }
+
+  /* ---------- mentions ---------- */
   function detectMention(text){
     if(!text || text.indexOf("@") === -1) return null;
     var candidates = [
@@ -376,13 +1085,70 @@
     return null;
   }
 
-  /* ---------- people + recipient chips ---------- */
+  /* ---------- UI state: capabilities, admin, rooms, people, chips ---------- */
+  function syncCapabilitiesUI(){
+    var canUpload = Boolean(state.capabilities && state.capabilities.uploads);
+    els.attachBtn.classList.toggle("hidden", !canUpload);
+    els.composerHint.textContent = canUpload
+      ? "Enter 发送 · Shift+Enter 换行 · 支持 Ctrl+V 粘贴图片 · 实时 WebSocket 推送"
+      : "Enter 发送 · Shift+Enter 换行 · 实时 WebSocket 推送，断线自动降级轮询";
+  }
+  function syncAdminUI(){
+    var isAdmin = Boolean(state.me && state.me.role === "admin");
+    els.adminBtn.classList.toggle("hidden", !isAdmin);
+  }
+  function updateComposerPlaceholder(){
+    els.input.placeholder = "发消息到 #" + state.room + "… 输入 @名字 也能指定接收对象";
+  }
+  function renderRooms(){
+    var list = state.rooms.slice();
+    if(state.room && list.indexOf(state.room) === -1) list.push(state.room);
+    var html = "";
+    list.forEach(function(r){
+      var active = r === state.room;
+      html += '<button class="room-pill' + (active ? " active" : "") + '" type="button" data-room="' + esc(r) + '" aria-current="' + (active ? "true" : "false") + '"><span class="hash">#</span>' + esc(r) + '</button>';
+    });
+    els.roomList.innerHTML = html;
+  }
   function renderPeople(){
     var html = "";
     state.bots.forEach(function(b){
-      html += '<span class="person"><span class="avatar" style="background:'+esc(colorForId(b.id))+'">'+esc(initials(b.name))+'</span><b>'+esc(b.name)+'</b></span>';
+      var statusLabel = fmtRelativePresence(Boolean(b.online), b.last_seen_at);
+      var dotCls = b.online ? "presence-dot online" : "presence-dot";
+      html += '<span class="person" title="' + esc(statusLabel) + '" aria-label="' + esc((b.name || b.id) + "：" + statusLabel) + '">'
+        + '<span class="avatar-wrap">'
+        + '<span class="avatar" style="background:' + esc(colorForId(b.id)) + '">' + esc(initials(b.name || b.id)) + '</span>'
+        + '<span class="' + dotCls + '"></span>'
+        + '</span>'
+        + '<b>' + esc(b.name || b.id) + '</b></span>';
     });
     els.people.innerHTML = html;
+    syncSenderFilterOptions();
+  }
+  function syncSenderFilterOptions(){
+    var prev = els.filterSender.value || state.filterSender;
+    var seen = {};
+    var opts = [];
+    state.bots.forEach(function(b){
+      if(b && b.id && !seen[b.id]){
+        seen[b.id] = true;
+        opts.push({ id: b.id, name: b.name || b.id });
+      }
+    });
+    state.messagesOrder.forEach(function(id){
+      var m = state.messagesById[id];
+      if(m && m.from && !seen[m.from]){
+        seen[m.from] = true;
+        opts.push({ id: m.from, name: m.from_name || botName(m.from) });
+      }
+    });
+    var html = '<option value="">全部成员</option>';
+    opts.forEach(function(o){
+      html += '<option value="' + esc(o.id) + '">' + esc(o.name) + '</option>';
+    });
+    els.filterSender.innerHTML = html;
+    if(prev && seen[prev]) els.filterSender.value = prev;
+    else els.filterSender.value = "";
   }
   function renderChips(){
     var targets = [{id:"all", name:"全部"}].concat(state.bots.filter(function(b){ return !state.me || b.id !== state.me.id; }));
@@ -405,7 +1171,134 @@
     }
   }
 
-  /* ---------- messages rendering ---------- */
+  /* ---------- notifications & unread title ---------- */
+  function syncNotifyBtn(){
+    var on = state.notifyEnabled && ("Notification" in window) && Notification.permission === "granted";
+    els.notifyBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    els.notifyBtn.classList.toggle("active", on);
+  }
+  function clearUnread(){
+    state.unread = 0;
+    document.title = "CF Bot Lounge";
+  }
+  function notifyIfHidden(m){
+    if(!document.hidden) return;
+    if(state.me && m.from === state.me.id) return;
+    state.unread += 1;
+    document.title = "(" + state.unread + ") CF Bot Lounge";
+    if(state.notifyEnabled && ("Notification" in window) && Notification.permission === "granted"){
+      try {
+        var sender = m.from_name || botName(m.from) || m.from || "新消息";
+        var body = (m.text && m.text.trim()) ? m.text.trim().slice(0, 140) : "[附件]";
+        var n = new Notification(sender + " · #" + state.room, {
+          body: body,
+          tag: "cf-bot-lounge-" + state.room + "-" + String(m.id || Date.now())
+        });
+        n.onclick = function(){
+          try { window.focus(); } catch(e){}
+          n.close();
+        };
+      } catch(e){}
+    }
+  }
+
+  /* ---------- typing indicator ---------- */
+  function renderTyping(){
+    var names = [];
+    var now = Date.now();
+    for(var id in state.typingUsers){
+      if(Object.prototype.hasOwnProperty.call(state.typingUsers, id)){
+        var item = state.typingUsers[id];
+        if(item && item.expiresAt > now) names.push(item.name);
+        else delete state.typingUsers[id];
+      }
+    }
+    if(!names.length){
+      els.typingBar.classList.add("hidden");
+      els.typingBar.textContent = "";
+      return;
+    }
+    els.typingBar.textContent = names.join("、") + " 正在输入…";
+    els.typingBar.classList.remove("hidden");
+  }
+  function recordRemoteTyping(fromId, fromName){
+    if(!fromId || (state.me && fromId === state.me.id)) return;
+    if(state.typingUsers[fromId] && state.typingUsers[fromId].timer){
+      clearTimeout(state.typingUsers[fromId].timer);
+    }
+    var timer = setTimeout(function(){
+      delete state.typingUsers[fromId];
+      renderTyping();
+    }, 3500);
+    state.typingUsers[fromId] = {
+      name: fromName || botName(fromId) || fromId,
+      expiresAt: Date.now() + 3500,
+      timer: timer
+    };
+    renderTyping();
+  }
+  function clearRemoteTyping(fromId){
+    if(!fromId || !state.typingUsers[fromId]) return;
+    if(state.typingUsers[fromId].timer) clearTimeout(state.typingUsers[fromId].timer);
+    delete state.typingUsers[fromId];
+    renderTyping();
+  }
+  function clearAllTyping(){
+    for(var id in state.typingUsers){
+      if(Object.prototype.hasOwnProperty.call(state.typingUsers, id) && state.typingUsers[id].timer){
+        clearTimeout(state.typingUsers[id].timer);
+      }
+    }
+    state.typingUsers = {};
+    renderTyping();
+  }
+
+  /* ---------- reply bar & attachment bar ---------- */
+  function renderReplyBar(){
+    if(!state.replyTo){
+      els.replyBar.classList.add("hidden");
+      els.replyBarInfo.innerHTML = "";
+      return;
+    }
+    var snippet = (state.replyTo.text || "[附件]").replace(/\s+/g, " ").slice(0, 80);
+    els.replyBarInfo.innerHTML = '回复 <b>' + esc(state.replyTo.from_name || botName(state.replyTo.from)) + '</b>：' + esc(snippet);
+    els.replyBar.classList.remove("hidden");
+  }
+  function setReplyTo(mid){
+    var m = state.messagesById[mid];
+    if(!m) return;
+    state.replyTo = {
+      id: m.id,
+      from: m.from,
+      from_name: m.from_name || botName(m.from) || m.from,
+      text: m.text || (m.attachments && m.attachments.length ? "[附件]" : "")
+    };
+    renderReplyBar();
+    els.input.focus();
+  }
+  function clearReplyTo(){
+    state.replyTo = null;
+    renderReplyBar();
+  }
+  function renderAttachBar(){
+    if(!state.pendingAttachments.length && state.uploadingCount === 0){
+      els.attachBar.classList.add("hidden");
+      els.attachBar.innerHTML = "";
+      return;
+    }
+    var html = "";
+    state.pendingAttachments.forEach(function(att, idx){
+      html += '<span class="attach-chip"><span>📎 ' + esc(att.name) + ' (' + esc(fmtBytes(att.size)) + ')</span>'
+        + '<button type="button" data-remove-att="' + idx + '" aria-label="移除附件">&times;</button></span>';
+    });
+    if(state.uploadingCount > 0){
+      html += '<span class="attach-chip">上传中 (' + state.uploadingCount + ')…</span>';
+    }
+    els.attachBar.innerHTML = html;
+    els.attachBar.classList.remove("hidden");
+  }
+
+  /* ---------- messages rendering & in-place updates ---------- */
   function isOwn(m){ return Boolean(state.me && m.from === state.me.id); }
   function syncRenderedOwn(){
     var nodes = els.list.querySelectorAll(".msg");
@@ -416,9 +1309,109 @@
     }
   }
   function nearBottom(){
-    return els.list.scrollHeight - els.list.scrollTop - els.list.clientHeight < 140;
+    return els.list.scrollHeight - els.list.scrollTop - els.list.clientHeight < 150;
   }
   function scrollBottom(){ els.list.scrollTop = els.list.scrollHeight; }
+
+  function statusBadgeHTML(status){
+    if(status === "thinking"){
+      return '<span class="msg-status status-thinking"><span class="pulse-dot"></span>思考中…</span>';
+    }
+    if(status === "done"){
+      return '<span class="msg-status status-done">已完成</span>';
+    }
+    if(status === "error"){
+      return '<span class="msg-status status-error">出错</span>';
+    }
+    return "";
+  }
+  function replyQuoteHTML(m){
+    var rp = m.reply_preview;
+    var targetId = (rp && rp.id) || m.reply_to;
+    if(!targetId) return "";
+    var author = rp ? (rp.from_name || botName(rp.from) || rp.from || "") : "";
+    var snippet = rp && rp.text ? rp.text : "查看被回复的消息";
+    return '<button type="button" class="reply-quote" data-jump-mid="' + esc(String(targetId)) + '">'
+      + (author ? '<span class="reply-quote-author">' + esc(author) + '</span>' : '')
+      + '<span class="reply-quote-text">' + esc(snippet) + '</span></button>';
+  }
+  function attachmentsHTML(atts){
+    if(!Array.isArray(atts) || !atts.length) return "";
+    var items = [];
+    for(var i = 0; i < atts.length; i++){
+      var a = atts[i];
+      if(!a || typeof a.url !== "string" || a.url.indexOf("/api/uploads/") !== 0 || a.url.indexOf("..") !== -1) continue;
+      var ct = String(a.content_type || "");
+      var name = String(a.name || "attachment");
+      if(ct.indexOf("image/") === 0){
+        items.push('<div class="att-img-wrap" data-att-url="' + esc(a.url) + '" data-att-name="' + esc(name) + '">加载图片中…</div>');
+      } else {
+        items.push('<button type="button" class="att-file-btn" data-att-url="' + esc(a.url) + '" data-att-name="' + esc(name) + '">📎 ' + esc(name) + (a.size ? ' (' + esc(fmtBytes(a.size)) + ')' : '') + '</button>');
+      }
+    }
+    return items.length ? '<div class="bubble-atts">' + items.join("") + '</div>' : "";
+  }
+  function hydrateAttachments(root){
+    var wraps = (root || els.list).querySelectorAll(".att-img-wrap[data-att-url]:not([data-loaded])");
+    for(var i = 0; i < wraps.length; i++){
+      (function(el){
+        el.setAttribute("data-loaded", "1");
+        var url = el.getAttribute("data-att-url");
+        var name = el.getAttribute("data-att-name") || "image";
+        if(!url || !state.token) return;
+        fetch(API + url, { headers: authHeaders({}), cache: "no-store" })
+          .then(function(r){
+            if(!r.ok) throw new Error("http " + r.status);
+            return r.blob();
+          })
+          .then(function(blob){
+            var blobUrl = URL.createObjectURL(blob);
+            state.blobUrls.push(blobUrl);
+            el.classList.add("loaded");
+            el.innerHTML = "";
+            var a = document.createElement("a");
+            a.href = blobUrl;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            var img = document.createElement("img");
+            img.className = "att-img";
+            img.src = blobUrl;
+            img.alt = name;
+            a.appendChild(img);
+            el.appendChild(a);
+          })
+          .catch(function(){
+            el.textContent = "图片加载失败（" + name + "）";
+          });
+      })(wraps[i]);
+    }
+  }
+  function downloadAttachment(url, name, btn){
+    if(!url || url.indexOf("/api/uploads/") !== 0 || url.indexOf("..") !== -1) return;
+    var orig = btn ? btn.textContent : "";
+    if(btn){ btn.disabled = true; btn.textContent = "下载中…"; }
+    fetch(API + url, { headers: authHeaders({}), cache: "no-store" })
+      .then(function(r){
+        if(!r.ok) throw new Error("http " + r.status);
+        return r.blob();
+      })
+      .then(function(blob){
+        var blobUrl = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = name || "download";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(blobUrl); }, 2000);
+      })
+      .catch(function(){
+        sysNote("附件下载失败：" + name, true);
+      })
+      .then(function(){
+        if(btn){ btn.disabled = false; btn.textContent = orig; }
+      });
+  }
 
   function msgHTML(m, pending){
     var own = isOwn(m) || m.from === "me";
@@ -427,22 +1420,87 @@
     if(m.to && m.to!=="all"){
       toBadge = '<span class="msg-to">→ '+esc(botName(m.to))+'</span>';
     }
+    var statusSlot = '<span class="msg-status-slot">' + statusBadgeHTML(m.status) + '</span>';
+    var editedSlot = '<span class="msg-edited-slot">' + (m.updated_at ? '<span class="msg-edited">已编辑</span>' : '') + '</span>';
+    var replyAction = pending ? "" : '<button type="button" class="msg-action-btn" data-reply-mid="' + esc(String(m.id)) + '">回复</button>';
+    var mdHtml = m.text ? '<div class="bubble-md">' + renderMarkdown(m.text) + '</div>' : '<div class="bubble-md"></div>';
     return '<div class="msg'+(own?" own":"")+(pending?" pending":"")+'" data-mid="'+esc(String(m.id))+'" data-from="'+esc(String(m.from||""))+'">'
       + '<span class="avatar" style="background:'+esc(colorForId(m.from))+'">'+esc(initials(name))+'</span>'
       + '<div class="msg-body"><div class="msg-meta"><span class="msg-name">'+esc(name)+'</span>'
-      + toBadge
-      + '<span class="msg-time">'+esc(fmtTime(m.ts))+(pending?" · "+esc(m.pendingLabel||"发送中"):"")+'</span></div>'
-      + '<div class="bubble">'+esc(m.text)+'</div></div></div>';
+      + toBadge + statusSlot
+      + '<span class="msg-time">'+esc(fmtTime(m.ts))+(pending?" · "+esc(m.pendingLabel||"发送中"):"")+'</span>'
+      + editedSlot + replyAction + '</div>'
+      + '<div class="bubble">' + replyQuoteHTML(m) + mdHtml + attachmentsHTML(m.attachments) + '</div></div></div>';
   }
-  function appendMessages(msgs, stick){
-    if(!msgs.length) return;
+
+  function updateMessageInPlace(m){
+    if(!m || m.id == null) return false;
+    var existing = state.messagesById[m.id];
+    var el = findMsgEl(m.id);
+    if(!existing || !el) return false;
+    state.messagesById[m.id] = Object.assign({}, existing, m);
+    var updated = state.messagesById[m.id];
+    var mdEl = el.querySelector(".bubble-md");
+    if(mdEl) mdEl.innerHTML = updated.text ? renderMarkdown(updated.text) : "";
+    var statusEl = el.querySelector(".msg-status-slot");
+    if(statusEl) statusEl.innerHTML = statusBadgeHTML(updated.status);
+    var editedEl = el.querySelector(".msg-edited-slot");
+    if(editedEl) editedEl.innerHTML = updated.updated_at ? '<span class="msg-edited">已编辑</span>' : "";
+    applyFilter();
+    return true;
+  }
+
+  function reconcileTemp(m){
+    for(var i=0;i<state.pendingTemps.length;i++){
+      var t = state.pendingTemps[i];
+      if((m.client_id && m.client_id === t.id) || (state.me && m.from === state.me.id && m.text === t.text)){
+        var el = findMsgEl(t.id);
+        if(el) el.remove();
+        state.pendingTemps.splice(i,1);
+        return;
+      }
+    }
+  }
+
+  function ingestMessages(msgs, opts){
+    opts = opts || {};
+    if(!Array.isArray(msgs) || !msgs.length) return [];
     var wasNear = nearBottom();
-    var html = "";
-    msgs.forEach(function(m){ html += msgHTML(m, false); });
-    els.list.insertAdjacentHTML("beforeend", html);
-    if(els.empty) els.empty.style.display = "none";
-    if(stick || wasNear) scrollBottom();
+    var fresh = [];
+    msgs.forEach(function(m){
+      if(!m || m.id == null) return;
+      if(typeof m.seq === "number" && m.seq > state.lastSeq) state.lastSeq = m.seq;
+      state.lastId = m.id;
+      if(state.knownIds[m.id]){
+        var prev = state.messagesById[m.id];
+        if(prev && (prev.text !== m.text || prev.status !== m.status || prev.updated_at !== m.updated_at)){
+          updateMessageInPlace(m);
+        }
+        return;
+      }
+      state.knownIds[m.id] = true;
+      state.messagesById[m.id] = m;
+      state.messagesOrder.push(m.id);
+      reconcileTemp(m);
+      clearRemoteTyping(m.from);
+      fresh.push(m);
+    });
+    if(fresh.length){
+      var html = "";
+      fresh.forEach(function(m){ html += msgHTML(m, false); });
+      els.list.insertAdjacentHTML("beforeend", html);
+      if(els.empty) els.empty.style.display = "none";
+      hydrateAttachments(els.list);
+      syncSenderFilterOptions();
+      applyFilter();
+      if(opts.stick || wasNear) scrollBottom();
+      if(opts.notify && state.initialLoaded){
+        fresh.forEach(notifyIfHidden);
+      }
+    }
+    return fresh;
   }
+
   function sysNote(text, isErr){
     var div = document.createElement("div");
     div.className = "sys-note"+(isErr?" err":"");
@@ -451,23 +1509,107 @@
     scrollBottom();
   }
 
-  /* ---------- API ----------
-     Every call goes through apiCall: 12s timeout, and on a network-level
-     failure it retries across two transports (fetch, then XMLHttpRequest)
-     with backoff. The status dot follows ANY successful call, so one
-     flaky endpoint cannot brand the whole API offline. */
+  /* ---------- search / filter & Markdown export ---------- */
+  function matchesFilter(m){
+    if(state.filterSender && String(m.from || "") !== state.filterSender) return false;
+    if(state.filterText){
+      var needle = state.filterText.toLowerCase();
+      var hay = (String(m.text || "") + " " + String(m.from_name || botName(m.from) || "")).toLowerCase();
+      if(hay.indexOf(needle) === -1) return false;
+    }
+    return true;
+  }
+  function applyFilter(){
+    var total = 0;
+    var visible = 0;
+    var filtering = Boolean(state.filterText || state.filterSender);
+    var nodes = els.list.querySelectorAll(".msg");
+    for(var i = 0; i < nodes.length; i++){
+      var node = nodes[i];
+      var mid = node.getAttribute("data-mid");
+      var m = state.messagesById[mid];
+      total++;
+      var ok = !filtering || (m ? matchesFilter(m) : true);
+      node.classList.toggle("msg-filtered-out", !ok);
+      if(ok) visible++;
+    }
+    if(filtering){
+      els.filterCount.textContent = "匹配 " + visible + " / " + total + " 条";
+    } else {
+      els.filterCount.textContent = "共 " + total + " 条";
+    }
+    els.clearFilterBtn.classList.toggle("hidden", !filtering);
+  }
+  function exportRoomMarkdown(){
+    var now = new Date();
+    var ymd = String(now.getFullYear())
+      + String(now.getMonth() + 1).padStart(2, "0")
+      + String(now.getDate()).padStart(2, "0");
+    var lines = [
+      "# CF Bot Lounge — #" + state.room,
+      "",
+      "Exported: " + now.toISOString(),
+      "Messages: " + state.messagesOrder.length,
+      "",
+      "---",
+      ""
+    ];
+    state.messagesOrder.forEach(function(id){
+      var m = state.messagesById[id];
+      if(!m) return;
+      var name = m.from_name || botName(m.from) || m.from || "?";
+      var toPart = (m.to && m.to !== "all") ? (" → " + botName(m.to)) : "";
+      var statusPart = m.status ? (" [" + m.status + "]") : "";
+      var editedPart = m.updated_at ? " (edited)" : "";
+      var tsStr = m.ts ? (parseTs(m.ts) ? parseTs(m.ts).toISOString() : String(m.ts)) : "";
+      lines.push("### " + name + toPart + " · " + tsStr + statusPart + editedPart);
+      if(m.reply_preview){
+        var rAuthor = m.reply_preview.from_name || botName(m.reply_preview.from) || "";
+        lines.push("> Reply to " + rAuthor + ": " + String(m.reply_preview.text || "").replace(/\r?\n/g, " "));
+        lines.push("");
+      } else if(m.reply_to){
+        lines.push("> Reply to: " + m.reply_to);
+        lines.push("");
+      }
+      if(m.text) lines.push(m.text);
+      if(Array.isArray(m.attachments) && m.attachments.length){
+        lines.push("");
+        m.attachments.forEach(function(a){
+          lines.push("- Attachment: `" + (a.name || a.key || "file") + "` (" + (a.content_type || "file") + ", " + fmtBytes(a.size) + ")");
+        });
+      }
+      lines.push("");
+    });
+    var blob = new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "cf-bot-lounge-" + state.room + "-" + ymd + ".md";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  /* ---------- API transport ---------- */
   function authHeaders(extra){
     var h = extra || {};
     if(state.token) h["Authorization"] = "Bearer " + state.token;
     return h;
   }
+  function setStatus(kind, text){
+    els.dot.className = "status-dot" + (kind ? " " + kind : "");
+    els.statusText.textContent = text;
+  }
   function setOnline(ok, errLabel){
     if(ok){
-      els.dot.className = "status-dot ok";
-      els.statusText.textContent = "接口在线 · " + (window.location.host || "当前服务");
+      if(state.wsAuthed){
+        setStatus("ok", "实时连接 · " + (window.location.host || "当前服务") + " · #" + state.room);
+      } else {
+        setStatus("ok", "轮询在线 · " + (window.location.host || "当前服务") + " · #" + state.room);
+      }
     } else {
-      els.dot.className = "status-dot bad";
-      els.statusText.textContent = "接口暂时连不上" + (errLabel ? "（" + errLabel + "）" : "") + "，自动重试中";
+      setStatus("bad", "接口暂时连不上" + (errLabel ? "（" + errLabel + "）" : "") + "，自动重试中");
     }
   }
   function delay(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
@@ -514,96 +1656,347 @@
     var body = bodyObj ? JSON.stringify(bodyObj) : null;
     var url = API + path;
     function tryOnce(n){
-      var viaXhr = (n % 2 === 0); // attempt 1 fetch, 2 XHR, 3 fetch
+      var viaXhr = (n % 2 === 0);
       var p = viaXhr ? xhrRequest(method, url, headers, body)
                      : fetchRequest(method, url, headers, body);
       return p.then(function(res){
-        if(res.status===401){ var e = new Error("unauthorized"); e.code = 401; throw e; }
-        if(res.status>=400){ var he = new Error("http " + res.status); he.code = res.status; throw he; }
-        setOnline(true);
+        if(res.status===401){ var e = new Error("unauthorized"); e.code = 401; e.json = res.json; throw e; }
+        if(res.status>=400){ var he = new Error((res.json && res.json.error) || ("http " + res.status)); he.code = res.status; he.json = res.json; throw he; }
+        if(!opts.quietStatus) setOnline(true);
         return res.json;
       }).catch(function(e){
-        if(e && e.code) throw e; // HTTP-level answer: the API responded, no retry
+        if(e && e.code) throw e;
         if(n < attempts) return delay(700 * n).then(function(){ return tryOnce(n + 1); });
-        setOnline(false, e && e.message==="timeout" ? "请求超时" : "网络错误");
+        if(!opts.quietStatus) setOnline(false, e && e.message==="timeout" ? "请求超时" : "网络错误");
         throw e;
       });
     }
     return tryOnce(1);
   }
+
   function checkHealth(){
-    return apiCall("GET", "/api/health", null, {attempts: 2}).then(function(j){
+    return apiCall("GET", "/api/health", null, {attempts: 2, quietStatus: true}).then(function(j){
+      if(j && j.capabilities){
+        state.capabilities = Object.assign({}, state.capabilities, j.capabilities);
+        syncCapabilitiesUI();
+      }
       return !!(j && j.ok);
     }).catch(function(){ return false; });
   }
+  function loadRooms(){
+    var gen = state.roomGen;
+    return apiCall("GET", "/api/rooms", null, {attempts: 2, quietStatus: true}).then(function(j){
+      if(gen !== state.roomGen) return;
+      if(j && Array.isArray(j.rooms) && j.rooms.length){
+        state.rooms = j.rooms.filter(function(r){ return ROOM_RE.test(String(r)); });
+        if(!state.rooms.length) state.rooms = DEFAULT_ROOMS.slice();
+      }
+      renderRooms();
+    }).catch(function(e){
+      if(e && e.code === 401) throw e;
+      renderRooms();
+    });
+  }
   function loadBots(){
-    return apiCall("GET", "/api/bots", null, {attempts: 2}).then(function(j){
+    var gen = state.roomGen;
+    var room = state.room;
+    return apiCall("GET", "/api/bots?room=" + encodeURIComponent(room), null, {attempts: 2, quietStatus: true}).then(function(j){
+      if(gen !== state.roomGen) return;
       var list = Array.isArray(j) ? j : (j && j.bots);
-      if(Array.isArray(list)){
-        state.bots = list;
+      if(Array.isArray(list)) state.bots = list;
+      if(j && j.capabilities){
+        state.capabilities = Object.assign({}, state.capabilities, j.capabilities);
+        syncCapabilitiesUI();
       }
       if(j && j.me && j.me.id){
         state.me = j.me;
+        syncAdminUI();
         renderPeople(); renderChips(); syncRenderedOwn();
         return;
       }
-      return apiCall("GET", "/api/me", null, {attempts: 2}).then(function(mj){
+      return apiCall("GET", "/api/me", null, {attempts: 2, quietStatus: true}).then(function(mj){
+        if(gen !== state.roomGen) return;
         if(mj && mj.me && mj.me.id) state.me = mj.me;
       }).catch(function(){}).then(function(){
+        if(gen !== state.roomGen) return;
+        syncAdminUI();
         renderPeople(); renderChips(); syncRenderedOwn();
       });
-    }).catch(function(){
+    }).catch(function(e){
+      if(e && (e.code === 401 || e.code === 403)) throw e;
       renderPeople(); renderChips();
     });
   }
-  function fetchMessages(){
-    var path = "/api/messages?limit=100";
-    if(state.lastId!=null && state.lastId!=="") path += "&since=" + encodeURIComponent(state.lastId);
+  function fetchMessages(opts){
+    opts = opts || {};
+    var gen = state.roomGen;
+    var room = state.room;
+    var path = "/api/messages?room=" + encodeURIComponent(room) + "&limit=100";
+    if(!opts.full){
+      if(state.lastSeq > 0) path += "&since_seq=" + encodeURIComponent(state.lastSeq);
+      else if(state.lastId != null && state.lastId !== "") path += "&since=" + encodeURIComponent(state.lastId);
+    }
     return apiCall("GET", path, null, {attempts: 2}).then(function(j){
+      if(gen !== state.roomGen) return [];
       var msgs = (j && j.messages) || [];
-      var fresh = [];
-      msgs.forEach(function(m){
-        if(m.id!=null){
-          state.lastId = m.id;
-          if(state.knownIds[m.id]) return;
-          state.knownIds[m.id] = true;
-        }
-        // reconcile optimistic temp bubble by client_id or own message text
-        for(var i=0;i<state.pendingTemps.length;i++){
-          var t = state.pendingTemps[i];
-          if((m.client_id && m.client_id === t.id) || (state.me && m.from === state.me.id && m.text === t.text)){
-            var el = els.list.querySelector('[data-mid="'+t.id+'"]');
-            if(el) el.remove();
-            state.pendingTemps.splice(i,1);
-            break;
-          }
-        }
-        fresh.push(m);
-      });
-      if(fresh.length) appendMessages(fresh, false);
+      var fresh = ingestMessages(msgs, { stick: Boolean(opts.stick), notify: Boolean(opts.notify) });
+      state.initialLoaded = true;
       return fresh;
     });
   }
-  function poll(silent){
-    return fetchMessages().then(function(){
-      if(!state.me || !state.bots.length) loadBots();
-      flushOutbox(); // a successful read proves the path is back: resend queue
+
+  /* ---------- WebSocket client + smart fallback polling ---------- */
+  function clearWsTimers(){
+    if(state.wsReconnectTimer){ clearTimeout(state.wsReconnectTimer); state.wsReconnectTimer = null; }
+    if(state.wsHeartbeatTimer){ clearInterval(state.wsHeartbeatTimer); state.wsHeartbeatTimer = null; }
+  }
+  function closeWebSocket(){
+    state.wsGen++;
+    state.wsAuthed = false;
+    clearWsTimers();
+    if(state.ws){
+      var old = state.ws;
+      state.ws = null;
+      try { old.onopen = old.onmessage = old.onerror = old.onclose = null; old.close(1000, "client close"); } catch(e){}
+    }
+  }
+  function connectWebSocket(){
+    if(!state.token || (window.location.protocol !== "http:" && window.location.protocol !== "https:")) return;
+    if(!("WebSocket" in window)) { startFallbackPoll(); return; }
+    closeWebSocket();
+    var myWsGen = state.wsGen;
+    var myRoomGen = state.roomGen;
+    var room = state.room;
+    var proto = window.location.protocol === "https:" ? "wss://" : "ws://";
+    var wsUrl = proto + window.location.host + "/api/ws?room=" + encodeURIComponent(room);
+    var ws;
+    try { ws = new WebSocket(wsUrl); }
+    catch(e){
+      startFallbackPoll();
+      scheduleWsReconnect(myWsGen, myRoomGen);
+      return;
+    }
+    state.ws = ws;
+
+    ws.onopen = function(){
+      if(myWsGen !== state.wsGen || myRoomGen !== state.roomGen) return;
+      try { ws.send(JSON.stringify({ type: "auth", token: state.token })); } catch(e){}
+    };
+
+    ws.onmessage = function(ev){
+      if(myWsGen !== state.wsGen || myRoomGen !== state.roomGen) return;
+      var frame = parseJSON(ev.data);
+      if(!frame || typeof frame !== "object") return;
+
+      if(frame.type === "auth_ok"){
+        state.wsAuthed = true;
+        state.wsBackoff = 1000;
+        if(frame.me && frame.me.id){
+          state.me = frame.me;
+          syncAdminUI();
+          syncRenderedOwn();
+        }
+        setStatus("ok", "实时连接 · " + (window.location.host || "当前服务") + " · #" + state.room);
+        stopFallbackPoll();
+        if(state.wsHeartbeatTimer) clearInterval(state.wsHeartbeatTimer);
+        state.wsHeartbeatTimer = setInterval(function(){
+          if(state.ws && state.ws.readyState === WebSocket.OPEN){
+            try { state.ws.send(JSON.stringify({ type: "ping" })); } catch(e){}
+          }
+        }, 25000);
+        // Catch up any missed messages since lastSeq
+        fetchMessages({ notify: false }).then(function(){
+          flushOutbox();
+        }).catch(function(){});
+        return;
+      }
+
+      if(frame.type === "pong") return;
+
+      if(frame.type === "message"){
+        if(frame.room && frame.room !== state.room) return;
+        var msg = frame.message || frame;
+        ingestMessages([msg], { notify: true });
+        return;
+      }
+
+      if(frame.type === "message_updated"){
+        if(frame.room && frame.room !== state.room) return;
+        var upd = frame.message || frame;
+        if(!updateMessageInPlace(upd) && upd && upd.id != null && !state.knownIds[upd.id]){
+          ingestMessages([upd], { notify: false });
+        }
+        return;
+      }
+
+      if(frame.type === "typing"){
+        if(frame.room && frame.room !== state.room) return;
+        recordRemoteTyping(frame.from, frame.from_name);
+        return;
+      }
+
+      if(frame.type === "error"){
+        if(frame.error === "unauthorized" || !state.wsAuthed){
+          handleUnauthorized("WebSocket 认证失败（401），请核对 token。");
+        } else if(frame.error === "forbidden"){
+          closeWebSocket();
+          sysNote("没有访问 #" + state.room + " 的权限（403）。", true);
+        }
+      }
+    };
+
+    ws.onerror = function(){
+      // Close handler manages reconnect & fallback polling
+    };
+
+    ws.onclose = function(ev){
+      if(myWsGen !== state.wsGen || myRoomGen !== state.roomGen) return;
+      state.wsAuthed = false;
+      state.ws = null;
+      clearWsTimers();
+      if(ev && ev.code === 4001){
+        handleUnauthorized("WebSocket 认证被拒绝（401），请更换有效 token。");
+        return;
+      }
+      if(ev && ev.code === 4003){
+        sysNote("没有访问 #" + state.room + " 的权限（403）。", true);
+        return;
+      }
+      setStatus("warn", "实时连接已断开，重连中 · #" + state.room);
+      if(!document.hidden) startFallbackPoll();
+      scheduleWsReconnect(myWsGen, myRoomGen);
+    };
+  }
+  function scheduleWsReconnect(expectedWsGen, expectedRoomGen){
+    if(state.wsReconnectTimer) clearTimeout(state.wsReconnectTimer);
+    var wait = state.wsBackoff;
+    state.wsBackoff = Math.min(state.wsBackoff * 2, 15000);
+    state.wsReconnectTimer = setTimeout(function(){
+      state.wsReconnectTimer = null;
+      if(expectedWsGen !== state.wsGen || expectedRoomGen !== state.roomGen || !state.token) return;
+      connectWebSocket();
+    }, wait);
+  }
+  function sendTypingSignal(){
+    if(!state.wsAuthed || !state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+    var now = Date.now();
+    if(now - state.lastTypingSent < 3000) return;
+    state.lastTypingSent = now;
+    try { state.ws.send(JSON.stringify({ type: "typing" })); } catch(e){}
+  }
+
+  function poll(opts){
+    if(!state.token) return Promise.resolve();
+    return fetchMessages(Object.assign({ notify: true }, opts || {})).then(function(){
+      if(!state.me || !state.bots.length) loadBots().catch(function(){});
+      flushOutbox();
     }).catch(function(e){
       if(e && e.code===401){
-        stopPolling();
-        openTokenGate("这个 token 接口不认（401），换一个再试。");
+        handleUnauthorized("这个 token 接口不认（401），换一个再试。");
+      } else if(e && e.code===403){
+        handleRoomForbidden();
       }
-      // network failure: stay quiet, next poll retries
+    });
+  }
+  function startFallbackPoll(){
+    if(state.pollTimer || state.wsAuthed || document.hidden) return;
+    state.pollTimer = setInterval(function(){
+      if(document.hidden || state.wsAuthed){
+        stopFallbackPoll();
+        return;
+      }
+      poll({});
+    }, 8000);
+  }
+  function stopFallbackPoll(){
+    if(state.pollTimer){ clearInterval(state.pollTimer); state.pollTimer = null; }
+  }
+  function startPresenceTimer(){
+    if(state.presenceTimer || document.hidden) return;
+    state.presenceTimer = setInterval(function(){
+      if(document.hidden || !state.token) return;
+      loadBots().catch(function(){});
+    }, 45000);
+  }
+  function stopPresenceTimer(){
+    if(state.presenceTimer){ clearInterval(state.presenceTimer); state.presenceTimer = null; }
+  }
+  function stopAllNetwork(){
+    closeWebSocket();
+    stopFallbackPoll();
+    stopPresenceTimer();
+  }
+  function handleUnauthorized(msg){
+    stopAllNetwork();
+    state.started = false;
+    openTokenGate(msg || "这个 token 接口不认（401），换一个再试。");
+  }
+  function handleRoomForbidden(){
+    closeWebSocket();
+    stopFallbackPoll();
+    var alt = null;
+    for(var i = 0; i < state.rooms.length; i++){
+      if(state.rooms[i] !== state.room){ alt = state.rooms[i]; break; }
+    }
+    sysNote("当前 token 无权访问房间 #" + state.room + "（403）。", true);
+    if(alt){
+      sysNote("可点击上方切换到已授权房间（如 #" + alt + "）。", false);
+    }
+  }
+
+  /* ---------- uploads (R2 optional) ---------- */
+  function uploadFile(file){
+    if(!state.capabilities.uploads || !file) return;
+    if(state.pendingAttachments.length + state.uploadingCount >= 5){
+      sysNote("单条消息最多附带 5 个附件。", true);
+      return;
+    }
+    if(file.size > MAX_UPLOAD_BYTES){
+      sysNote("文件过大：" + (file.name || "附件") + "（最大 5 MB）。", true);
+      return;
+    }
+    var mime = file.type || "";
+    if(mime && !ALLOWED_UPLOAD_TYPES[mime]){
+      sysNote("不支持的文件类型：" + mime, true);
+      return;
+    }
+    var room = state.room;
+    var gen = state.roomGen;
+    state.uploadingCount += 1;
+    renderAttachBar();
+    var fd = new FormData();
+    var fname = file.name || ("paste-" + Date.now() + "." + ((mime.split("/")[1] || "png").replace("jpeg", "jpg")));
+    fd.append("file", file, fname);
+    fetch(API + "/api/uploads?room=" + encodeURIComponent(room), {
+      method: "POST",
+      headers: authHeaders({}),
+      body: fd
+    }).then(function(r){
+      return r.text().then(function(t){ return { status: r.status, json: parseJSON(t) }; });
+    }).then(function(res){
+      if(gen !== state.roomGen) return;
+      if(res.status === 401){
+        handleUnauthorized("上传认证失败（401），请重新填写 token。");
+        return;
+      }
+      if(res.status >= 400 || !res.json || !res.json.attachment){
+        sysNote("附件上传失败：" + ((res.json && res.json.error) || ("HTTP " + res.status)), true);
+        return;
+      }
+      state.pendingAttachments.push(res.json.attachment);
+    }).catch(function(){
+      if(gen === state.roomGen) sysNote("附件上传网络失败，请重试。", true);
+    }).then(function(){
+      if(gen !== state.roomGen) return;
+      state.uploadingCount = Math.max(0, state.uploadingCount - 1);
+      renderAttachBar();
     });
   }
 
-  /* ---------- sending: outbox queue ----------
-     A message enters the outbox first and stays there until the POST is
-     accepted. Network failure never bounces text back to the input and
-     never deletes the bubble: it is marked 等待重发 and flushed
-     automatically when any later call succeeds. */
+  /* ---------- sending: outbox queue ---------- */
   function markTemp(tempId, label){
-    var el = els.list.querySelector('[data-mid="'+tempId+'"] .msg-time');
+    var msgEl = findMsgEl(tempId);
+    var el = msgEl ? msgEl.querySelector(".msg-time") : null;
     if(el){
       var t = null;
       for(var i=0;i<state.pendingTemps.length;i++){ if(state.pendingTemps[i].id===tempId) t = state.pendingTemps[i]; }
@@ -611,7 +2004,7 @@
     }
   }
   function dropTemp(tempId){
-    var el = els.list.querySelector('[data-mid="'+tempId+'"]');
+    var el = findMsgEl(tempId);
     if(el) el.remove();
     state.pendingTemps = state.pendingTemps.filter(function(t){ return t.id!==tempId; });
   }
@@ -619,21 +2012,28 @@
     if(state.flushing || !state.outbox.length || !state.token) return;
     state.flushing = true;
     var item = state.outbox[0];
-    apiCall("POST", "/api/messages", {text: item.text, to: item.to, client_id: item.tempId}, {attempts: 3}).then(function(){
+    var payload = { text: item.text, to: item.to, client_id: item.tempId };
+    if(item.reply_to) payload.reply_to = item.reply_to;
+    if(item.attachments && item.attachments.length) payload.attachments = item.attachments;
+    apiCall("POST", "/api/messages?room=" + encodeURIComponent(item.room), payload, {attempts: 3}).then(function(j){
       state.outbox.shift();
       state.flushing = false;
-      setTimeout(function(){ poll(true); }, 400);
+      if(item.room === state.room && j && j.message){
+        ingestMessages([j.message], { stick: true, notify: false });
+      } else if(item.room === state.room && !state.wsAuthed){
+        setTimeout(function(){ poll({}); }, 400);
+      }
       flushOutbox();
     }).catch(function(e){
       state.flushing = false;
       if(e && e.code===401){
         state.outbox.shift();
         dropTemp(item.tempId);
-        openTokenGate("发送时接口返回 401，token 可能不对，换一个再试。");
+        handleUnauthorized("发送时接口返回 401，token 可能不对，换一个再试。");
       } else if(e && e.code >= 400 && e.code < 500){
         state.outbox.shift();
         dropTemp(item.tempId);
-        sysNote("消息未能发送（HTTP " + e.code + "）", true);
+        sysNote("消息未能发送（" + (e.message || ("HTTP " + e.code)) + "）", true);
         flushOutbox();
       } else {
         markTemp(item.tempId, "等待网络恢复后自动重发");
@@ -642,10 +2042,14 @@
   }
   function sendMessage(){
     var text = els.input.value.trim();
-    if(!text) return;
+    var atts = state.pendingAttachments.slice();
+    if(!text && !atts.length) return;
+    if(state.uploadingCount > 0){
+      sysNote("请等待附件上传完成后再发送。", false);
+      return;
+    }
     if(!state.token){ openTokenGate(""); return; }
 
-    // @mention in text also sets recipient dynamically against state.bots or @all / @全部
     var mentioned = detectMention(text);
     var to = mentioned || state.selectedTo || "all";
     if(mentioned && state.selectedTo !== mentioned){
@@ -653,6 +2057,7 @@
       renderChips();
     }
 
+    var replyRef = state.replyTo ? Object.assign({}, state.replyTo) : null;
     var tempId = "tmp-" + Date.now() + "-" + Math.floor(Math.random()*1e6);
     var temp = {
       id: tempId,
@@ -660,47 +2065,123 @@
       from: state.me ? state.me.id : "me",
       from_name: state.me ? state.me.name : "Me",
       to: to,
-      text: text
+      text: text,
+      reply_to: replyRef ? replyRef.id : undefined,
+      reply_preview: replyRef ? { id: replyRef.id, from: replyRef.from, from_name: replyRef.from_name, text: String(replyRef.text || "").slice(0, 80) } : undefined,
+      attachments: atts.length ? atts : undefined
     };
     state.pendingTemps.push(temp);
-    state.outbox.push({tempId: tempId, text: text, to: to});
+    state.outbox.push({
+      room: state.room,
+      tempId: tempId,
+      text: text,
+      to: to,
+      reply_to: replyRef ? replyRef.id : undefined,
+      attachments: atts.length ? atts : undefined
+    });
+
     if(els.empty) els.empty.style.display = "none";
     els.list.insertAdjacentHTML("beforeend", msgHTML(temp, true));
+    hydrateAttachments(els.list);
     scrollBottom();
+
     els.input.value = "";
     autoGrow();
+    clearReplyTo();
+    state.pendingAttachments = [];
+    renderAttachBar();
     els.input.focus();
     flushOutbox();
   }
 
-  /* ---------- polling ---------- */
-  function startPolling(){
-    if(state.pollTimer) return;
-    state.pollTimer = setInterval(function(){ poll(true); }, 5000);
-    state.healthTimer = setInterval(checkHealth, 30000);
+  /* ---------- room switching & chat boot ---------- */
+  function resetRoomState(){
+    state.roomGen++;
+    closeWebSocket();
+    stopFallbackPoll();
+    clearAllTyping();
+    clearReplyTo();
+    revokeBlobUrls();
+    state.pendingAttachments = [];
+    state.uploadingCount = 0;
+    renderAttachBar();
+    state.lastSeq = 0;
+    state.lastId = null;
+    state.initialLoaded = false;
+    state.knownIds = {};
+    state.messagesById = {};
+    state.messagesOrder = [];
+    state.pendingTemps = [];
+    state.outbox = [];
+    state.wsBackoff = 1000;
+    els.list.querySelectorAll(".msg,.sys-note").forEach(function(n){ n.remove(); });
+    if(els.empty) els.empty.style.display = "";
+    applyFilter();
   }
-  function stopPolling(){
-    if(state.pollTimer){ clearInterval(state.pollTimer); state.pollTimer = null; }
-    if(state.healthTimer){ clearInterval(state.healthTimer); state.healthTimer = null; }
+
+  function loadCurrentRoom(opts){
+    opts = opts || {};
+    var gen = state.roomGen;
+    updateComposerPlaceholder();
+    renderRooms();
+    setStatus("", "正在连接 #" + state.room + "…");
+
+    return loadRooms().then(function(){
+      if(gen !== state.roomGen) return;
+      return loadBots();
+    }).then(function(){
+      if(gen !== state.roomGen) return;
+      return fetchMessages({ stick: true, notify: false });
+    }).then(function(){
+      if(gen !== state.roomGen) return;
+      scrollBottom();
+      connectWebSocket();
+      startPresenceTimer();
+    }).catch(function(e){
+      if(gen !== state.roomGen) return;
+      if(e && e.code === 401){
+        handleUnauthorized("这个 token 接口不认（401），换一个再试。");
+      } else if(e && e.code === 403){
+        // On boot, if initial room is unauthorized, auto-switch to first allowed room
+        if(opts.allowAutoFallback && state.rooms.length && state.rooms.indexOf(state.room) === -1){
+          switchRoom(state.rooms[0]);
+        } else {
+          handleRoomForbidden();
+        }
+      } else {
+        connectWebSocket();
+        if(!document.hidden) startFallbackPoll();
+        startPresenceTimer();
+      }
+    });
+  }
+
+  function switchRoom(nextRoom){
+    var clean = normalizeRoom(nextRoom);
+    if(!clean) return;
+    if(clean === state.room && state.started) return;
+    state.room = clean;
+    if(state.rooms.indexOf(clean) === -1) state.rooms.push(clean);
+    syncRoomLocation(clean);
+    resetRoomState();
+    if(state.token){
+      state.started = true;
+      loadCurrentRoom({ allowAutoFallback: false });
+    } else {
+      renderRooms();
+      updateComposerPlaceholder();
+    }
   }
 
   function startChat(){
-    if(state.started) { startPolling(); return; }
+    if(state.started){
+      if(!state.wsAuthed) connectWebSocket();
+      startPresenceTimer();
+      return;
+    }
     state.started = true;
     checkHealth();
-    loadBots().then(function(){
-      return fetchMessages();
-    }).then(function(){
-      scrollBottom();
-      startPolling();
-    }).catch(function(e){
-      if(e && e.code===401){
-        state.started = false;
-        openTokenGate("这个 token 接口不认（401），换一个再试。");
-      } else {
-        startPolling();
-      }
-    });
+    loadCurrentRoom({ allowAutoFallback: true });
   }
 
   /* ---------- token gate ---------- */
@@ -722,19 +2203,24 @@
   function closeTokenGate(){ els.overlay.classList.remove("open"); }
 
   function cleanToken(raw){
-    // tokens are plain hex; drop any whitespace a paste may have picked up
     return String(raw || "").replace(/\s+/g, "");
   }
   function verifyToken(t, attemptsLeft){
-    // Same dual-transport idea as apiCall, but with the candidate token
-    // instead of the stored one. Only a real 401 proves the token wrong.
-    var url = API + "/api/messages?limit=1";
+    var url = API + "/api/me";
     var headers = {"Authorization":"Bearer " + t};
     var attempt = fetchRequest("GET", url, headers, null).catch(function(){
       return xhrRequest("GET", url, headers, null);
     });
     return attempt.then(function(res){
       if(res.status===401){ var e = new Error("unauthorized"); e.code = 401; throw e; }
+      if(res.status===404){
+        // Fallback for older deployments without /api/me
+        return fetchRequest("GET", API + "/api/messages?limit=1", headers, null).then(function(r2){
+          if(r2.status===401){ var e2 = new Error("unauthorized"); e2.code = 401; throw e2; }
+          if(r2.status>=400 && r2.status!==403) throw new Error("http " + r2.status);
+          return true;
+        });
+      }
       if(res.status>=400) throw new Error("http " + res.status);
       return true;
     }).catch(function(e){
@@ -746,20 +2232,237 @@
     });
   }
   function enterWithToken(t, note){
-    stopPolling();
+    stopAllNetwork();
     setToken(t);
     state.token = t;
     state.me = null;
+    state.bots = [];
+    syncAdminUI();
     closeTokenGate();
     state.started = false;
-    state.lastId = null; state.knownIds = {};
-    state.pendingTemps = [];
-    state.outbox = [];
-    els.list.querySelectorAll(".msg,.sys-note").forEach(function(n){ n.remove(); });
-    if(els.empty) els.empty.style.display = note ? "none" : "";
+    resetRoomState();
+    if(note && els.empty) els.empty.style.display = "none";
     startChat();
     if(note) sysNote(note, false);
   }
+
+  /* ---------- admin token management modal ---------- */
+  function setAdminErr(msg){
+    els.adminErr.textContent = msg || "";
+    els.adminErr.classList.toggle("show", !!msg);
+  }
+  function renderAdminTokens(tokens){
+    if(!Array.isArray(tokens) || !tokens.length){
+      els.adminTokenList.innerHTML = '<div class="sys-note">暂无参与者记录</div>';
+      return;
+    }
+    var html = "";
+    tokens.forEach(function(t){
+      var src = t.source === "dynamic" ? "dynamic" : "static";
+      var roomsStr = Array.isArray(t.rooms) && t.rooms.length ? t.rooms.join(", ") : "全部房间";
+      var whStr = t.has_webhook ? (" · Webhook: " + (t.webhook_url || "已配置")) : "";
+      html += '<div class="token-item">'
+        + '<div class="token-meta">'
+        + '<div class="token-meta-top"><b>' + esc(t.name || t.id) + '</b> <span style="color:var(--muted)">@' + esc(t.id) + '</span>'
+        + ' <span class="badge role">' + esc(t.role || "bot") + '</span>'
+        + ' <span class="badge ' + src + '">' + src + '</span></div>'
+        + '<div class="token-meta-sub">房间：' + esc(roomsStr) + esc(whStr) + '</div>'
+        + '</div>'
+        + (src === "dynamic"
+          ? '<button class="btn sm danger" type="button" data-revoke-id="' + esc(t.id) + '">吊销</button>'
+          : '')
+        + '</div>';
+    });
+    els.adminTokenList.innerHTML = html;
+  }
+  function loadAdminTokens(){
+    setAdminErr("");
+    els.adminTokenList.innerHTML = '<div class="sys-note">加载中…</div>';
+    return apiCall("GET", "/api/admin/tokens", null, {attempts: 2, quietStatus: true}).then(function(j){
+      renderAdminTokens((j && j.tokens) || []);
+    }).catch(function(e){
+      els.adminTokenList.innerHTML = "";
+      setAdminErr("无法加载 Token 列表：" + (e && e.message ? e.message : "请求失败"));
+    });
+  }
+  function openAdminModal(){
+    if(!state.me || state.me.role !== "admin") return;
+    els.newTokenBox.classList.add("hidden");
+    els.newTokenVal.textContent = "";
+    setAdminErr("");
+    els.adminOverlay.classList.add("open");
+    loadAdminTokens();
+  }
+  function closeAdminModal(){
+    els.adminOverlay.classList.remove("open");
+  }
+
+  /* ---------- event listeners ---------- */
+  // Room bar delegation
+  els.roomList.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-room]");
+    if(!btn) return;
+    switchRoom(btn.getAttribute("data-room"));
+  });
+  function showAddRoomForm(open){
+    els.addRoomForm.classList.toggle("hidden", !open);
+    els.addRoomBtn.classList.toggle("hidden", open);
+    els.roomAddErr.classList.add("hidden");
+    els.roomAddErr.textContent = "";
+    if(open){
+      els.newRoomInput.value = "";
+      els.newRoomInput.focus();
+    }
+  }
+  els.addRoomBtn.addEventListener("click", function(){ showAddRoomForm(true); });
+  els.cancelAddRoomBtn.addEventListener("click", function(){ showAddRoomForm(false); });
+  els.addRoomForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    var cleaned = normalizeRoom(els.newRoomInput.value);
+    if(!cleaned){
+      els.roomAddErr.textContent = "房间名仅支持小写字母、数字、_ 或 -（1~32位）";
+      els.roomAddErr.classList.remove("hidden");
+      return;
+    }
+    showAddRoomForm(false);
+    switchRoom(cleaned);
+  });
+  window.addEventListener("hashchange", function(){
+    var m = String(window.location.hash || "").match(/^#room=([^&]+)/i);
+    if(!m) return;
+    try {
+      var target = normalizeRoom(decodeURIComponent(m[1]));
+      if(target && target !== state.room) switchRoom(target);
+    } catch(e){}
+  });
+
+  // Search / filter / export
+  els.searchBtn.addEventListener("click", function(){
+    var open = els.filterBar.classList.toggle("hidden") === false;
+    els.searchBtn.setAttribute("aria-pressed", open ? "true" : "false");
+    els.searchBtn.classList.toggle("active", open);
+    if(open){
+      applyFilter();
+      els.searchInput.focus();
+    }
+  });
+  els.searchInput.addEventListener("input", function(){
+    state.filterText = els.searchInput.value.trim();
+    applyFilter();
+  });
+  els.filterSender.addEventListener("change", function(){
+    state.filterSender = els.filterSender.value;
+    applyFilter();
+  });
+  els.clearFilterBtn.addEventListener("click", function(){
+    state.filterText = "";
+    state.filterSender = "";
+    els.searchInput.value = "";
+    els.filterSender.value = "";
+    applyFilter();
+  });
+  els.exportMdBtn.addEventListener("click", exportRoomMarkdown);
+
+  // Notifications toggle
+  els.notifyBtn.addEventListener("click", function(){
+    if(!("Notification" in window)){
+      sysNote("当前浏览器不支持桌面通知。", false);
+      return;
+    }
+    if(state.notifyEnabled && Notification.permission === "granted"){
+      state.notifyEnabled = false;
+      lsSet(LS_NOTIFY_KEY, "0");
+      syncNotifyBtn();
+      return;
+    }
+    if(Notification.permission === "granted"){
+      state.notifyEnabled = true;
+      lsSet(LS_NOTIFY_KEY, "1");
+      syncNotifyBtn();
+      return;
+    }
+    if(Notification.permission === "denied"){
+      sysNote("浏览器已拦截通知权限，请在浏览器站点设置中允许。", false);
+      return;
+    }
+    Notification.requestPermission().then(function(perm){
+      state.notifyEnabled = (perm === "granted");
+      lsSet(LS_NOTIFY_KEY, state.notifyEnabled ? "1" : "0");
+      syncNotifyBtn();
+    }).catch(function(){});
+  });
+
+  // Message list delegation: code copy, reply button, jump to reply quote, file download
+  els.list.addEventListener("click", function(e){
+    var copyBtn = e.target.closest(".md-copy-btn");
+    if(copyBtn){
+      var box = copyBtn.closest(".md-code");
+      var codeEl = box ? box.querySelector("code") : null;
+      if(codeEl) copyText(codeEl.textContent || "", copyBtn, "复制");
+      return;
+    }
+    var replyBtn = e.target.closest("[data-reply-mid]");
+    if(replyBtn){
+      setReplyTo(replyBtn.getAttribute("data-reply-mid"));
+      return;
+    }
+    var jumpBtn = e.target.closest("[data-jump-mid]");
+    if(jumpBtn){
+      var targetId = jumpBtn.getAttribute("data-jump-mid");
+      var targetEl = findMsgEl(targetId);
+      if(targetEl){
+        targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        targetEl.classList.remove("msg-flash");
+        void targetEl.offsetWidth;
+        targetEl.classList.add("msg-flash");
+        setTimeout(function(){ targetEl.classList.remove("msg-flash"); }, 1600);
+      }
+      return;
+    }
+    var fileBtn = e.target.closest(".att-file-btn");
+    if(fileBtn){
+      downloadAttachment(fileBtn.getAttribute("data-att-url"), fileBtn.getAttribute("data-att-name") || "file", fileBtn);
+    }
+  });
+
+  // Reply & attachment bars
+  els.cancelReplyBtn.addEventListener("click", clearReplyTo);
+  els.attachBar.addEventListener("click", function(e){
+    var rm = e.target.closest("[data-remove-att]");
+    if(!rm) return;
+    var idx = Number(rm.getAttribute("data-remove-att"));
+    if(!isNaN(idx) && idx >= 0 && idx < state.pendingAttachments.length){
+      state.pendingAttachments.splice(idx, 1);
+      renderAttachBar();
+    }
+  });
+  els.attachBtn.addEventListener("click", function(){
+    if(state.capabilities.uploads) els.fileInput.click();
+  });
+  els.fileInput.addEventListener("change", function(){
+    var files = els.fileInput.files;
+    if(files && files.length){
+      for(var i = 0; i < files.length; i++) uploadFile(files[i]);
+    }
+    els.fileInput.value = "";
+  });
+  els.input.addEventListener("paste", function(e){
+    if(!state.capabilities.uploads || !e.clipboardData || !e.clipboardData.items) return;
+    var items = e.clipboardData.items;
+    var handled = false;
+    for(var i = 0; i < items.length; i++){
+      if(items[i].kind === "file" && items[i].type && items[i].type.indexOf("image/") === 0){
+        var f = items[i].getAsFile();
+        if(f){
+          uploadFile(f);
+          handled = true;
+        }
+      }
+    }
+    if(handled) e.preventDefault();
+  });
+
+  // Token gate events
   els.saveToken.addEventListener("click", function(){
     var t = cleanToken(els.tokenInput.value);
     if(!t){
@@ -770,7 +2473,6 @@
     els.saveToken.disabled = true;
     els.saveToken.textContent = "验证中…";
     els.tokenErr.classList.remove("show");
-    // Verify with retries: one flaky attempt must not lock the user out.
     verifyToken(t, 3).then(function(){
       els.saveToken.disabled = false;
       els.saveToken.textContent = "保存并进入";
@@ -782,9 +2484,6 @@
         els.tokenErr.textContent = "接口明确拒绝了这个 token（401 未授权），这不是网络问题。请核对 token 是否填写完整、中间不要有空格。";
         els.tokenErr.classList.add("show");
       } else {
-        // Unreachable after retries: the token cannot be proven wrong, so
-        // save it and enter. Polling keeps retrying; a real 401 later
-        // reopens this gate with the unauthorized message above.
         enterWithToken(t, "接口暂时连不上，已先保存这个 token 并进入。网络恢复后消息会自动加载；如果 token 不对，页面会再提示你重新填写。");
       }
     });
@@ -799,20 +2498,96 @@
   els.cancelToken.addEventListener("click", closeTokenGate);
   els.clearToken.addEventListener("click", function(){
     setToken(""); state.token = ""; state.me = null; state.bots = [];
+    syncAdminUI();
     renderPeople(); renderChips();
-    stopPolling(); state.started = false;
+    stopAllNetwork(); state.started = false;
     closeTokenGate();
     openTokenGate("已清除，粘一个新的 token 才能继续收发。");
   });
   els.tokenBtn.addEventListener("click", function(){ openTokenGate(""); });
 
-  /* ---------- composer wiring ---------- */
+  // Admin modal events
+  els.adminBtn.addEventListener("click", openAdminModal);
+  els.closeAdminBtn.addEventListener("click", closeAdminModal);
+  els.refreshAdminBtn.addEventListener("click", loadAdminTokens);
+  els.adminOverlay.addEventListener("click", function(e){
+    if(e.target === els.adminOverlay) closeAdminModal();
+  });
+  els.copyNewTokenBtn.addEventListener("click", function(){
+    copyText(els.newTokenVal.textContent || "", els.copyNewTokenBtn, "复制 Token");
+  });
+  els.adminTokenList.addEventListener("click", function(e){
+    var btn = e.target.closest("[data-revoke-id]");
+    if(!btn) return;
+    var id = btn.getAttribute("data-revoke-id");
+    if(!id) return;
+    btn.disabled = true;
+    btn.textContent = "吊销中…";
+    setAdminErr("");
+    apiCall("DELETE", "/api/admin/tokens/" + encodeURIComponent(id), null, {attempts: 2, quietStatus: true}).then(function(){
+      loadAdminTokens();
+      loadBots().catch(function(){});
+    }).catch(function(err){
+      btn.disabled = false;
+      btn.textContent = "吊销";
+      setAdminErr("吊销失败：" + (err && err.message ? err.message : "请求错误"));
+    });
+  });
+  els.issueTokenForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    setAdminErr("");
+    var id = els.admId.value.trim();
+    if(!ID_RE.test(id)){
+      setAdminErr("参与者 ID 需为 1~32 位字母/数字/下划线/短横线，且以字母或数字开头。");
+      return;
+    }
+    var body = { id: id, role: els.admRole.value || "bot" };
+    var name = els.admName.value.trim();
+    if(name) body.name = name;
+    var roomsRaw = els.admRooms.value.trim();
+    if(roomsRaw){
+      body.rooms = roomsRaw.split(",").map(function(x){ return x.trim().toLowerCase(); }).filter(Boolean);
+    }
+    var whUrl = els.admWebhookUrl.value.trim();
+    if(whUrl) body.webhook_url = whUrl;
+    var whSecret = els.admWebhookSecret.value.trim();
+    if(whSecret) body.webhook_secret = whSecret;
+
+    els.issueTokenBtn.disabled = true;
+    els.issueTokenBtn.textContent = "签发中…";
+    apiCall("POST", "/api/admin/tokens", body, {attempts: 2, quietStatus: true}).then(function(j){
+      els.issueTokenBtn.disabled = false;
+      els.issueTokenBtn.textContent = "签发动态 Token";
+      if(j && j.token){
+        els.newTokenVal.textContent = j.token;
+        els.newTokenBox.classList.remove("hidden");
+      }
+      els.issueTokenForm.reset();
+      loadAdminTokens();
+      loadBots().catch(function(){});
+    }).catch(function(err){
+      els.issueTokenBtn.disabled = false;
+      els.issueTokenBtn.textContent = "签发动态 Token";
+      setAdminErr("签发失败：" + (err && err.message ? err.message : "请求错误"));
+    });
+  });
+
+  // Escape key closes open modal / inline room input
+  document.addEventListener("keydown", function(e){
+    if(e.key !== "Escape") return;
+    if(els.adminOverlay.classList.contains("open")){ closeAdminModal(); return; }
+    if(!els.addRoomForm.classList.contains("hidden")){ showAddRoomForm(false); return; }
+    if(els.overlay.classList.contains("open") && !els.cancelToken.classList.contains("hidden")){ closeTokenGate(); }
+  });
+
+  // Composer wiring
   function autoGrow(){
     els.input.style.height = "auto";
-    els.input.style.height = Math.min(els.input.scrollHeight, 120) + "px";
+    els.input.style.height = Math.min(els.input.scrollHeight, 130) + "px";
   }
   els.input.addEventListener("input", function(){
     autoGrow();
+    if(els.input.value.trim()) sendTypingSignal();
     var mentioned = detectMention(els.input.value);
     if(mentioned && state.selectedTo !== mentioned){
       state.selectedTo = mentioned;
@@ -826,24 +2601,56 @@
     }
   });
   els.send.addEventListener("click", sendMessage);
-  els.refresh.addEventListener("click", function(){ checkHealth(); poll(true); flushOutbox(); });
+  els.refresh.addEventListener("click", function(){
+    checkHealth();
+    loadRooms().catch(function(){});
+    loadBots().catch(function(){});
+    poll({ full: true });
+    if(state.token && !state.wsAuthed){
+      state.wsBackoff = 1000;
+      connectWebSocket();
+    }
+  });
   document.querySelectorAll(".quick").forEach(function(b){
     b.addEventListener("click", function(){
       var fill = b.getAttribute("data-fill") || "";
       els.input.value = fill;
       autoGrow();
       els.input.focus();
-      // place cursor at end
       els.input.setSelectionRange(els.input.value.length, els.input.value.length);
     });
   });
   document.addEventListener("visibilitychange", function(){
-    if(!document.hidden && state.token){ poll(true); flushOutbox(); }
+    if(document.hidden){
+      stopFallbackPoll();
+      stopPresenceTimer();
+    } else {
+      clearUnread();
+      if(state.token){
+        poll({});
+        loadBots().catch(function(){});
+        startPresenceTimer();
+        if(!state.wsAuthed){
+          state.wsBackoff = 1000;
+          connectWebSocket();
+          startFallbackPoll();
+        }
+      }
+    }
   });
+  window.addEventListener("focus", clearUnread);
 
   /* ---------- boot ---------- */
+  state.room = readInitialRoom();
+  syncRoomLocation(state.room);
+  state.notifyEnabled = lsGet(LS_NOTIFY_KEY) === "1";
+  syncNotifyBtn();
+  syncCapabilitiesUI();
+  syncAdminUI();
+  renderRooms();
   renderPeople();
   renderChips();
+  updateComposerPlaceholder();
   autoGrow();
   state.token = getToken();
   checkHealth();

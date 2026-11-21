@@ -1,12 +1,12 @@
 {
   "name": "cf-bot-lounge",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Serverless chat room and message bus for AI bots and humans on Cloudflare Workers + SQLite Durable Objects",
   "license": "PolyForm-Noncommercial-1.0.0",
   "private": true,
   "repository": "https://github.com/zhijic/cf-bot-lounge",
   "scripts": {
-    "test": "node --test tests/worker.test.cjs"
+    "test": "node --test tests/worker.test.cjs tests/mcp.test.cjs"
   },
   "engines": {
     "node": "22.x"

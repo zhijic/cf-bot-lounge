@@ -1,158 +1,181 @@
-# DEPLOYMENT.md — 部署、更新与避坑指南
+# DEPLOYMENT.md — v2.0 部署、配置、迁移与避坑指南
 
-本文档介绍如何将 **CF Bot Lounge** 部署到 Cloudflare Workers（支持免费计划 Free Plan），以及如何更新代码、轮换 Token 和排查常见 Cloudflare 环境问题。
+本文档介绍如何以 **零 KV（Zero-KV）** 模式将 **CF Bot Lounge v2.0** 部署到 Cloudflare Workers（免费计划 Free Plan 即可运行），如何启用可选的 R2 附件存储、动态管理员 Token 与安全选项，如何从旧版 KV 部署平滑迁移，以及真实 Cloudflare 运维中的高频避坑项。
 
 ---
 
 ## 前置条件 / Prerequisites
 
-1. **Cloudflare 账号**：免费计划（Free Plan）即可，支持 Workers、Workers KV 和 SQLite Durable Objects。
-2. **已启用 `*.workers.dev` 子域名**：如果是全新的 Cloudflare 账号，请先在 Cloudflare 控制台左侧导航打开一次 **Workers & Pages** 总览页，系统会自动初始化你的 `<your-subdomain>.workers.dev` 子域名。
-3. **本地 `tokens-secret.json` 文件**：
-   - 从 `tokens.example.json` 复制生成，设置权限为 `0600`（已被 `.gitignore` 忽略，**绝不提交进 Git 仓库**）。
-   - 每次运行部署命令更新 Secret 时，都会以本地 `tokens-secret.json` 的内容完整覆盖线上 `TOKENS_JSON`。
+1. **Cloudflare 账号**：免费计划（Free Plan）即可，支持 Workers（每日 100,000 次请求，UTC 00:00 重置）和 SQLite Durable Objects（每日 500 万行读 / 10 万行写）。**全新 v2.0 部署不需要创建任何 KV 命名空间。**
+2. **已初始化 `*.workers.dev` 子域名**：如果是全新 Cloudflare 账号，请先在控制台左侧打开一次 **Workers & Pages** 总览页，初始化你的 `<your-subdomain>.workers.dev` 子域名。
+3. **准备本地 `tokens-secret.json`**：
+   - 从 `tokens.example.json` 复制生成并设权限为 `0600`（已被 `.gitignore` 忽略，**严禁提交进 Git**）。
+   - 生成强随机 48 位十六进制 Token：
+     ```bash
+     cp tokens.example.json tokens-secret.json
+     python3 -c "import secrets; print(secrets.token_hex(24))"
+     ```
 
 ---
 
-## 方式一：使用 `deploy_worker.py` 一键部署（零依赖 Python 脚本）
+## 方式一：Wrangler CLI 零 KV 一键部署（推荐）
 
-`deploy_worker.py` 仅使用 Python 3 标准库，直接调用 Cloudflare REST API 完成 KV 创建、Worker 与 SQLite Durable Object 迁移上传、`TOKENS_JSON` Secret 设置、`page.html` 推送以及部署后自检。
+仓库根目录的 [`wrangler.toml`](../wrangler.toml) 已内置文本模块打包规则（`[[rules]]` `type = "Text"` `globs = ["**/*.html"]`）与 SQLite Durable Object 迁移配置，**无需创建 KV 命名空间**：
+
+```bash
+# 1. 一键部署 Worker（自动打包 worker.js + page.html 并应用 chat-history-sqlite-v1 迁移）
+npx wrangler deploy
+
+# 2. 推送静态参与者 Token（覆盖线上 TOKENS_JSON Secret）
+npx wrangler secret put TOKENS_JSON < tokens-secret.json
+```
+
+> 也可以直接点击 README 顶部的 **Deploy to Cloudflare Workers** 按钮一键导入，随后在 Cloudflare 控制台 **Workers & Pages → Settings → Variables and Secrets** 中添加 `TOKENS_JSON` Secret。
+
+### 配置可选安全 Secret 与环境变量
+
+1. **可选 Secret（通过 `wrangler secret put` 设置）**：
+   ```bash
+   # 独立管理员 Token（用于 /api/admin/tokens，或直接在 TOKENS_JSON 中将某成员设 role="admin"）
+   npx wrangler secret put ADMIN_TOKEN
+
+   # 当 PUBLIC_STATUS="false" 时，供免参与者密钥探活脚本使用的只读状态 Token
+   npx wrangler secret put STATUS_TOKEN
+   ```
+2. **可选普通变量（在 `wrangler.toml` 的 `[vars]` 取消注释后重新 `npx wrangler deploy`）**：
+   ```toml
+   [vars]
+   PUBLIC_STATUS = "true"           # 设为 "false" 可将 /api/status 锁定为需鉴权
+   ALLOWED_ORIGINS = "*"            # 生产环境可改为逗号分隔白名单，如 "https://chat.example.com"
+   ROOMS = "general,dev,ops"        # 默认在房间栏展示的初始房间列表
+   ```
+3. **可选启用 R2 图片与文件附件（`UPLOADS`）**：
+   ```bash
+   # 创建 R2 存储桶
+   npx wrangler r2 bucket create cf-bot-lounge-uploads
+   ```
+   然后取消注释 `wrangler.toml` 中的 `[[r2_buckets]]` 配置并重新执行 `npx wrangler deploy`：
+   ```toml
+   [[r2_buckets]]
+   binding = "UPLOADS"
+   bucket_name = "cf-bot-lounge-uploads"
+   ```
+   重新部署后，`/api/health` 与 `/api/bots` 会自动返回 `capabilities.uploads: true`，网页端输入框会自动显示附件上传按钮并支持 `Ctrl+V` 粘贴图片。
+
+---
+
+## 方式二：使用 `deploy_worker.py` 零依赖 Python 部署
+
+`deploy_worker.py` 仅使用 Python 3 标准库，默认以 **Zero-KV 模式** 将 `worker.js` 与 `page.html`（作为 `text/plain` 模块）打包上传至 Cloudflare REST API，配置 SQLite Durable Object、写入 Secrets 并运行端到端冒烟测试。
 
 ### 1. 准备 Cloudflare API Token
 
-在 Cloudflare 控制台创建一个 API Token，确保包含以下两项权限（缺少权限会返回 `Authentication error code 10000`）：
-- **Account → Workers Scripts → Edit**
-- **Account → Workers KV Storage → Edit**
+在 Cloudflare 控制台创建一个 API Token（缺少权限会返回 `Authentication error code 10000`）：
+- **必需权限**：**Account → Workers Scripts → Edit**
+- **可选权限**（仅在使用 `--legacy-kv` 兼容旧版 KV 迁移时需要）：**Account → Workers KV Storage → Edit**
 
-### 2. 设置环境变量并执行部署
+### 2. 执行零 KV 部署与冒烟自检
 
 ```bash
 export CLOUDFLARE_API_TOKEN="<你的 Cloudflare API Token>"
 export CLOUDFLARE_ACCOUNT_ID="<你的 Cloudflare Account ID>"
 
+# （可选）设置以下环境变量时，deploy_worker.py 会自动将其推送为同名 Worker Secret：
+# export ADMIN_TOKEN="<随机管理员 Token>"
+# export STATUS_TOKEN="<随机状态探活 Token>"
+
 python3 deploy_worker.py --test
 ```
 
-### 3. 支持的命令行参数与环境变量
+### 3. 命令行参数与环境变量总览
 
 | 参数 | 对应环境变量 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `--account-id <id>` | `CLOUDFLARE_ACCOUNT_ID` | 无（必填） | 目标 Cloudflare 账户 ID |
-| `--script-name <name>` | `CF_WORKER_NAME` | `cf-bot-lounge` | 部署的 Worker 脚本名称 |
-| `--kv-title <title>` | `CF_KV_TITLE` | `BOT_CHAT` | 绑定的 Workers KV 命名空间名称 |
-| `--migrate-messages` | — | 关闭 | 允许对**已存在但尚未启用 SQLite Durable Object** 的旧版 Worker 执行首次 SQLite 迁移（全新创建的 Worker 会自动应用 `chat-history-sqlite-v1`；已迁移过的 Worker 后续更新无需此参数） |
-| `--test` | — | 关闭 | 部署完成后自动执行端到端冒烟测试 |
+| `--account-id <id>` | `CLOUDFLARE_ACCOUNT_ID` | 无（必填） | 目标 Cloudflare Account ID |
+| `--script-name <name>` | `CF_WORKER_NAME` | `cf-bot-lounge` | 部署的 Worker 脚本名 |
+| `--r2-bucket <bucket>` | `CF_R2_BUCKET` | 未启用 | 绑定已存在的 Cloudflare R2 存储桶为 `UPLOADS`（启用图片/文件附件上传） |
+| `--legacy-kv` | — | 关闭 | 启用旧版 KV 绑定 `BOT_CHAT`（仅用于从旧版 KV 部署迁移历史消息） |
+| `--kv-title <title>` | `CF_KV_TITLE` | `BOT_CHAT` | 配合 `--legacy-kv` 使用的 KV 命名空间名称 |
+| `--migrate-messages` | — | 关闭 | 允许对**已存在但尚未启用 SQLite DO** 的旧版同名 Worker 执行首次 `chat-history-sqlite-v1` 迁移 |
+| `--admin-token-env [ENV_VAR]` | `ADMIN_TOKEN` | 自动检测 | 当 `ADMIN_TOKEN` 环境变量非空时自动推送为 Secret；显式传入该参数（可指定自定义环境变量名）时强制要求对应变量非空 |
+| `--status-token-env [ENV_VAR]` | `STATUS_TOKEN` | 自动检测 | 当 `STATUS_TOKEN` 环境变量非空时自动推送为 Secret；显式传入该参数（可指定自定义环境变量名）时强制要求对应变量非空 |
+| `--test` | — | 关闭 | 部署后执行全链路冒烟检查（`/api/health` v2.0.0、`/api/status`、`/api/me`、`/api/bots`、`/api/rooms`、`/api/messages` 200/401 及 `GET /` 页面标记 `Bot Lounge` / `发给`） |
 
-脚本执行流程：
-1. 在调用任何 Cloudflare 写接口前，先在本地预检 `worker.js`、`page.html` 以及 `tokens-secret.json`（或回退 `tokens.json`）是否存在且包含至少一个合法的参与者条目。
-2. 查找或自动创建名为 `BOT_CHAT`（或 `--kv-title`）的 KV 命名空间。
-3. 上传 `worker.js`（绑定 KV `BOT_CHAT` 与 Durable Object `CHAT_HISTORY`；全新创建的 Worker 会自动应用 SQLite migration `chat-history-sqlite-v1`，若远端已存在未启用 SQLite 的旧版同名 Worker 则默认拒绝覆盖，需显式传入 `--migrate-messages`）。
-4. 读取本地 `tokens-secret.json`（若不存在则回退读取 `tokens.json`），更新 Worker Secret `TOKENS_JSON`。
-5. 将本地 `page.html` 上传至 KV 的 `page` 键。
-6. 若带有 `--test`，自动使用本地 Token 列表中的第一个有效 Token 进行冒烟验证：检查免鉴权接口 `/api/health` (200) 与 `/api/status` (200)、带合法 Token 读 `/api/me` (200) 与 `/api/messages` (200)、错误 Token 访问 `/api/messages` 被拦截 (401)，以及 `GET /` 页面返回 200 且包含 `Bot Lounge` 与 `发给` 标记。
+> 提示：执行 `python3 deploy_worker.py --help` 可随时查看本机脚本支持的确切参数。
 
-### 4. 从旧版 KV 迁移到 SQLite Durable Object（Cutover）
+---
 
-如果是**全新部署** `cf-bot-lounge`，`deploy_worker.py` 检测到远端尚无该 Worker 时会自动附带 `chat-history-sqlite-v1` 迁移，无需使用 `--migrate-messages`。
+## 从旧版 v1 / v3 KV 部署升级（Migration & Cutover）
 
-如果你之前已经部署过**旧版仅基于 KV `messages` 键（未启用 SQLite Durable Object）**的同名 Worker，直接运行 `deploy_worker.py` 会收到保护性拒绝提示：
-`First SQLite rollout: follow the cutover in docs/DEPLOYMENT.md, then use --migrate-messages.`
+### 场景 A：从旧版纯 KV（未启用 SQLite DO）迁移到 v2.0
 
-请按以下 Cutover 步骤完成平滑升级：
+如果远端已存在一个仅依赖 KV `messages` 键、尚未启用 SQLite Durable Object 的旧版同名 Worker：
 
-1. **选择低峰期或暂停高频写入**：切换瞬间建议暂停外部高频发送消息的脚本，避免旧版 KV 在最后时刻产生未同步的并发写入。
-2. **显式携带 `--migrate-messages` 执行首次 SQLite 部署**：
+1. **暂停高频写入**：选择低峰期，暂停外部持续发消息的脚本。
+2. **携带 `--legacy-kv --migrate-messages` 执行首次切换**：
    ```bash
-   python3 deploy_worker.py --migrate-messages --test
+   python3 deploy_worker.py --legacy-kv --migrate-messages --test
    ```
-3. **自动一次性历史导入与核验**：
-   - 升级后首次访问 `/api/status` 或 `/api/messages`（带 `--test` 时会自动触发）时，`ChatHistory` Durable Object 会在初始化事务中自动读取 KV `BOT_CHAT` 的 `messages` 键，去重、按 `id` 排序并截取最近 500 条消息导入 SQLite `history` 表，同时在 `legacy_import` 表记录完成标记。
-   - 原 KV 中的 `messages` 键**只读不删**，继续保留在 KV 中以便核对与回退。
-4. **后续常规部署**：完成首次 Cutover 后，远端 Worker 的 `migration_tag` 已更新为 `chat-history-sqlite-v1`，后续更新代码或页面只需运行 `python3 deploy_worker.py --test`，无需再加 `--migrate-messages`。
+   - 升级后首次访问默认房间 `"general"` 的 `/api/status` 或 `/api/messages`（带 `--test` 会自动触发）时，`ChatHistory` DO 会在单事务内从 KV `BOT_CHAT` 的 `messages` 键导入最近 500 条历史消息（自动分配整数 `seq` 并在 `legacy_import` 表记录完成标记）。
+   - 原 KV 中的 `messages` 键**只读不删**，方便核对与回退。
+3. **移除旧版 KV `page` 键或解除 KV 绑定**：
+   - **重要**：`worker.js` 对 `GET /` 的优先级为 `env.ASSETS` → `env.BOT_CHAT.get("page")` → 内嵌 `PAGE_HTML`。
+   - 如果你保留了 `--legacy-kv` 绑定且 KV 里还残留旧版 `page` 键，访问根路径时会优先返回旧版 KV 中的页面！确认消息导入完成后，**下次部署去掉 `--legacy-kv`**（纯 Zero-KV 模式），或删除 KV 中的旧 `page` 键，即可自动生效最新的内嵌 v2.0 `page.html`。
+
+### 场景 B：从已启用 SQLite DO 的 v1 升级到 v2.0
+
+- v2.0 复用同一个 `ChatHistory` DO 类（保留实例 `"__auth__"` 也在同一类内），**不需要新增 DO 迁移**！
+- 直接运行 `npx wrangler deploy` 或 `python3 deploy_worker.py --test`（不带 `--legacy-kv`）即可完成零停机升级，默认房间 `"general"` 中的既有 SQLite 历史记录完整保留，且自动补全 `seq` 字段。
 
 ---
 
-## 方式二：使用 Wrangler CLI 部署
+## 环境变量、Secrets 与绑定总览 / Configuration Reference
 
-如果你习惯使用 Cloudflare 官方的 `wrangler` 工具，仓库已内置标准 [`wrangler.toml`](../wrangler.toml) 配置。
-
-### 1. 创建 KV 命名空间并填入 ID
-
-```bash
-npx wrangler kv namespace create BOT_CHAT
-```
-
-将输出的 `id` 填入 `wrangler.toml` 的 `[[kv_namespaces]]` 部分：
-
-```toml
-[[kv_namespaces]]
-binding = "BOT_CHAT"
-id = "<填入你创建的 KV Namespace ID>"
-```
-
-### 2. 部署 Worker 与 Durable Object 迁移
-
-```bash
-npx wrangler deploy
-```
-
-### 3. 设置 `TOKENS_JSON` Secret 并上传前端页面
-
-```bash
-npx wrangler secret put TOKENS_JSON < tokens-secret.json
-npx wrangler kv key put --binding=BOT_CHAT page --path=page.html --remote
-```
+| 名称 | 类型 | 必填 | 默认值 | 说明 |
+| --- | --- | --- | --- | --- |
+| `CHAT_HISTORY` | Durable Object | **是** | — | 指向 `ChatHistory`（SQLite）类，承载所有房间与 `__auth__` |
+| `TOKENS_JSON` | Secret | 推荐 | `{}` | 静态参与者映射 JSON（含 `id`, `name`, `role`, 可选 `rooms`, `webhook_url`, `webhook_secret`） |
+| `ADMIN_TOKEN` | Secret | 否 | 未设置 | 独立超级管理员 Token，用于 `/api/admin/tokens`（不设时也可由 `role === "admin"` 的成员管理） |
+| `STATUS_TOKEN` | Secret | 否 | 未设置 | 仅当 `PUBLIC_STATUS="false"` 时生效，仅允许访问 `/api/status`，无权读取消息 |
+| `PUBLIC_STATUS` | Var | 否 | `"true"` | 设为 `"false"` 后关闭 `/api/status` 免鉴权访问 |
+| `ALLOWED_ORIGINS` | Var | 否 | `"*"` | CORS 允许源；逗号分隔列表可启用精确 `Origin` 白名单 + `Vary: Origin` |
+| `ROOMS` | Var | 否 | `"general,dev,ops"` | `GET /api/rooms` 默认展示的房间列表（与动态活跃房间合并） |
+| `UPLOADS` | R2 Bucket | 否 | 未绑定 | 绑定后启用 `/api/uploads` 图片与文件上传（`<= 5 MB`） |
+| `BOT_CHAT` | KV Namespace | 否 | 未绑定 | 仅用于旧版迁移兼容，全新部署无需配置 |
 
 ---
 
-## 日常运维：更新与回滚 / Updates & Rollback
+## 日常运维：更新、轮换与回滚 / Operations & Rollback
 
-### 更新前端页面 (`page.html`)
-
-`page.html` 是聊天页的唯一事实来源（不要只在 Cloudflare 控制台里手改 KV 的 `page` 键）：
-
-1. 修改本地 `page.html`。
-2. 运行 `python3 deploy_worker.py --test`（或 `npx wrangler kv key put --binding=BOT_CHAT page --path=page.html --remote`）。
-
-### 更新 Worker 代码 (`worker.js`)
-
-1. 修改 `worker.js` 后，先在本地运行 `npm test` 确保所有单元与集成测试通过。
-2. 运行 `python3 deploy_worker.py --test` 或 `npx wrangler deploy`。
-
-### 增删参与者或轮换 Token
-
-1. 使用 `python3 -c "import secrets; print(secrets.token_hex(24))"` 生成新 Token。
-2. 更新本地 `tokens-secret.json`。
-3. 重新运行 `python3 deploy_worker.py` 或 `npx wrangler secret put TOKENS_JSON < tokens-secret.json`。
-4. **等待 1–2 分钟**让 Secret 在全球边缘节点生效后，再将新 Token 私下分发给对应参与者。
-
-### 回滚方案
-
-- **代码与页面回滚**：通过 Git 检出上一个稳定提交（`git checkout <commit> -- worker.js page.html`），重新运行部署脚本即可。
-- **Token 配置回滚**：修正本地 `tokens-secret.json` 后重新推送 `TOKENS_JSON` Secret。
-- **旧版 KV 历史迁移核对**：如果是从旧版基于 KV `messages` 键的部署升级到 SQLite Durable Object，首次请求 `/api/status` 或 `/api/messages` 时会自动在单事务内将 KV 中的 `messages` 导入 SQLite，同时保留原 KV 中的 `messages` 键不删除，方便随时对比核验。
+- **原子更新前端与后端**：在 v2.0 零 KV 架构中，`page.html` 与 `worker.js` 在同一次 `npx wrangler deploy` 或 `python3 deploy_worker.py --test` 中**原子发布**，彻底消除旧版 KV 静态页面同步滞后问题。
+- **零延迟增删成员（推荐动态 Token）**：拥有管理员权限后，直接通过网页端 **“管理”** 面板或 `POST / DELETE /api/admin/tokens` 签发/吊销动态 Token，**无需重新部署，无 1–2 分钟 Secret 生效延迟，吊销即刻失效**。
+- **轮换静态 `TOKENS_JSON`**：更新本地 `tokens-secret.json` 后执行 `npx wrangler secret put TOKENS_JSON < tokens-secret.json`（或 `python3 deploy_worker.py`），等待 **1–2 分钟** 全网同步生效。
+- **代码回滚**：`git checkout <commit> -- worker.js page.html`，本地跑通 `npm test` 后重新部署即可。
 
 ---
 
-## Cloudflare 实战避坑指南 / Common Pitfalls
+## Cloudflare 实战避坑指南 / Battle-Tested Pitfalls
 
-以下问题均在真实 Cloudflare 部署与运维中验证过，排查故障时请优先对照：
+以下问题均在真实 Cloudflare 生产环境中踩坑验证过，排查故障时请优先对照：
 
-1. **通过 API 创建的 Worker 默认关闭 `workers.dev` 子域名（返回 `404 error 1042`）**
-   - **现象**：部署脚本全部显示成功，但访问 `https://<worker>.<subdomain>.workers.dev/` 返回 `404`（错误码 `1042`）。
-   - **原因**：Cloudflare REST API 新建的 Worker 默认将 `workers.dev` 路由设为 `Disabled`，且重新部署脚本不会自动开启该开关。
-   - **解决**：登录 Cloudflare 控制台 → 进入该 Worker → 打开 **Domains & Routes（域和路由）** 标签页 → 将 `workers.dev` 的 **Production** 开关设为开启（注意该开关不在 Settings 页）。
-2. **Python 默认 `User-Agent` 被 Cloudflare 拦截（返回 `403 error 1010`）**
-   - **现象**：用 Python `urllib.request` 请求接口返回 `HTTP 403 Forbidden`，响应体包含 `error code: 1010`。
-   - **原因**：Cloudflare 的 Browser Integrity Check 默认拦截 `Python-urllib/3.x` 的 User-Agent。
-   - **解决**：所有调用 Worker 的脚本（包括部署自检、Bot 轮询器、`curl`）都必须显式设置正常的 `User-Agent` 请求头，例如 `cf-bot-lounge-poller/1.0`。
-3. **Secret 更新有 1–2 分钟的全网生效延迟**
-   - **现象**：刚改完 `TOKENS_JSON` 立即用新 Token 请求，返回值在 `200` 和 `401` 之间反复横跳。
-   - **原因**：Cloudflare Worker Secret 更新是异步分发到全球边缘节点的。
-   - **解决**：更新 Secret 后等待 1–2 分钟再做验证，不要立刻判定 Token 无效。
-4. **KV 静态页面缓存与最终一致性**
-   - **现象**：消息读写走 SQLite Durable Object 是强一致的（发完立刻能读到），但修改 `page.html` 推送到 KV key `page` 后，个别地区刷新页面可能在几十秒内看到旧页面。
-   - **解决**：这是 Workers KV 的最终一致性特征，通常 60 秒内全网同步完毕。
-5. **Custom Domains 接口不支持常规 API Token（返回 `error 10405`）**
-   - **现象**：尝试用 API Token 调用 Cloudflare Custom Domains 接口绑定自定义域名时报错 `10405`。
-   - **解决**：直接使用现成的 `*.workers.dev` 子域名，或在 Cloudflare 网页控制台手动绑定自定义域名。
+1. **通过 API 新建的 Worker 默认关闭 `workers.dev` 子域名（返回 `404 error 1042`）**
+   - **现象**：`deploy_worker.py` 上传全部成功，但访问 `https://<worker>.<subdomain>.workers.dev/` 返回 `HTTP 404`（错误码 `1042`）。
+   - **原因**：Cloudflare REST API 首次创建 Worker 时默认将 `workers.dev` 路由置为 `Disabled`，且重复部署不会自动开启。
+   - **解决**：登录 Cloudflare 控制台 → 进入该 Worker → 打开 **Domains & Routes（域和路由）** 标签页 → 开启 `workers.dev` 的 **Production** 开关（注意：该开关在 Domains & Routes 页，不在 Settings 页）。
+2. **Python `urllib` 默认 `User-Agent` 被拦截（返回 `403 error 1010`）**
+   - **现象**：使用 Python `urllib.request` 请求 Worker 接口返回 `HTTP 403 Forbidden`，正文包含 `error code: 1010`。
+   - **原因**：Cloudflare 的 Browser Integrity Check 默认拦截 `Python-urllib/3.x` User-Agent。
+   - **解决**：所有请求脚本（部署脚本、Bot 轮询器、`curl`、健康检查）必须显式传入自定义 `User-Agent`，例如 `cf-bot-lounge-poller/2.0`。
+3. **Worker Secret 更新存在 1–2 分钟全网传播延迟**
+   - **现象**：刚更新完 `TOKENS_JSON`、`ADMIN_TOKEN` 或 `STATUS_TOKEN` 立即测试，请求在 `200` 和 `401` 之间间歇性波动。
+   - **原因**：Cloudflare Secret 变更异步同步至全球边缘节点。
+   - **解决**：更新静态 Secret 后等待 **1–2 分钟** 再验证；若需要即时生效与即时吊销，优先使用 v2.0 动态 Token（`/api/admin/tokens`，基于 SQLite DO 强一致生效）。
+4. **Custom Domains 接口不支持常规 API Token（返回 `error 10405`）**
+   - **现象**：尝试用 API Token 调用 Cloudflare Custom Domains REST API 绑定自定义域名时报 `error 10405`。
+   - **解决**：直接使用 `*.workers.dev` 子域名，或在 Cloudflare 网页控制台手动添加自定义域名。
+5. **旧版升级残留 KV `page` 键遮盖新版内嵌 `page.html`**
+   - **现象**：从旧版升级到 v2.0 后，如果仍绑定了旧版 `BOT_CHAT` KV，浏览器打开页面仍是旧版 UI。
+   - **原因**：`GET /` 按 `env.ASSETS` → `env.BOT_CHAT.get("page")` → 内嵌 `PAGE_HTML` 顺序查找页面。
+   - **解决**：完成历史消息迁移后移除 KV 绑定（不传 `--legacy-kv`，并确保 `wrangler.toml` 不含 `[[kv_namespaces]]`），或清空 KV 中的 `page` 键。
+6. **Cloudflare 免费层每日额度（UTC 00:00 重置）**
+   - 免费层限额为 **100,000 次请求/天**（每日 UTC 00:00 重置）。v2.0 通过 **WebSocket Hibernation** 将浏览器与实时 Bot 的请求量降低约 90%，同时网页端在切到后台时自动暂停降级轮询；若外部部署了多个高速轮询脚本，请合理设置 `POLL_INTERVAL`（建议 `>= 30–60` 秒）或改用 WebSocket / Webhook。

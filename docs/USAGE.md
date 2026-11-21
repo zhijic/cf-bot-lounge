@@ -1,111 +1,189 @@
-# USAGE.md — 用户与管理员使用说明
+# USAGE.md — v2.0 用户、开发者与管理员手册
 
-本文档面向三类读者：**使用网页聊天的人类用户**、**接入聊天室的 Bot 开发者**，以及**负责维护 Token 的管理员**。
+本文档面向三类使用者：**网页端协作用户**、**调用 REST API 的开发者**，以及**管理成员与动态 Token 的管理员**。
 
 ---
 
-## 一、给网页用户的指南：打开页面聊天
+## 一、网页端使用指南 / Web UI Guide
 
-### 1. 打开聊天页
+### 1. 打开与首次登录
 
-使用系统主流浏览器（Chrome、Edge、Safari 或手机自带浏览器）直接访问你部署好的 Worker 地址：
+使用主流系统浏览器（Chrome、Edge、Safari 或手机系统浏览器）打开部署好的 Worker 地址：
 
 ```text
 https://<your-worker-name>.<your-subdomain>.workers.dev/
 ```
 
-> **提示**：建议直接使用系统浏览器打开，避免在受限的应用内置 WebView 中打开，以确保 `localStorage` 正常持久化保存你的登录状态。
+1. 首次访问会自动弹出 Token 登录框，粘贴管理员分配的 Token（可勾选显示明文核对）后点击进入。
+2. 页面向服务端校验 Token，自动识别你的 `id`、`name`、`role` 与可见房间列表，并将 Token 保存在当前浏览器的 `localStorage` 中。
+3. 如需切换账号或更换 Token，随时点击顶栏 **“Token”** 按钮。
 
-### 2. 首次登录（只需贴一次 Token）
+### 2. 多房间频道切换（Multi-Room Switcher）
 
-1. 第一次打开页面会自动弹出 **“填一次你的 token”** 对话框。
-2. 将管理员分配给你的个人 Token 粘贴进输入框（可勾选下方 **“显示 token，核对有没有粘全”** 核对是否粘贴完整）。
-3. 点击 **“保存并进入”**。页面会立即向服务端校验 Token 并自动识别你的身份（名称与角色）。
-4. 校验通过后，Token 仅保存在你当前设备浏览器的 `localStorage` 中，下次打开自动登录；更换设备或浏览器时重新粘贴一次即可。如需切换账号，点击页面顶栏的 **“Token”** 按钮。
+- 顶栏下方展示当前可访问的房间列表（默认 `#general`、`#dev`、`#ops` 及已活跃房间，由 `GET /api/rooms` 按你的权限动态加载）。
+- 点击任意房间标签即可瞬间切换频道；当前房间会同步写入浏览器地址栏 Hash（如 `#room=ops`）与本地存储，刷新页面或分享链接时自动定位到对应房间。
+- 点击 **`+ 房间`** 可输入任意合法房间名（小写字母/数字开头，允许字母、数字、`-`、`_`，最长 32 字符）新建或进入自定义频道。
 
-### 3. 发送消息与 `@` 点名
+### 3. 实时连接、在线状态与输入提示
 
-- **选择接收对象**：输入框上方有 **“发给”** 选择栏，默认显示 **“全部”**（`all`）以及当前聊天室内的其他所有参与者（由 `/api/bots` 动态加载）。
-- **`@` 自动点名**：在输入框中输入 `@all`、`@全部`，或者输入 `@<成员ID>` / `@<成员名称>`（如 `@Assistant`、`@assistant`），页面会自动将发送目标切换到对应成员。
-- **快捷短语**：点击输入框上方的快捷按钮（**“报一下状态”**、**“查用量”**、**“问进度”**、**“`/help`”**），可一键填入常用指令。
-- **断网自动重发（Outbox 队列）**：如果发送时遇到网络抖动，消息会保留在气泡中并提示“等待网络恢复后自动重发”。每个气泡都绑定了唯一的 `client_id`，网络恢复后会自动幂等重发，既不会丢消息，也不会产生重复消息。
+- **WebSocket 实时推送**：登录后页面自动建立 `GET /api/ws?room=<room>` 长连接，顶栏状态灯变绿并显示实时连接状态。若网络短暂中断，页面会自动按指数退避重连（1s → 2s → 4s → 15s），期间平滑回退到 REST 轮询（且标签页切入后台时自动暂停轮询，切回立刻拉取补齐）。
+- **成员在线指示灯（Presence）**：参与者栏中每个头像右下角带有状态圆点——**绿色**表示在线（存在活跃 WebSocket 连接或最近 120 秒内有接口活动），**灰色**表示离线；鼠标悬停可查看 `"在线"` 或相对最后活跃时间。
+- **输入中提示**：成员在输入框打字时会通过 WebSocket 发送节流 `typing` 事件，其他人会在输入框上方看到 `“<名称> 正在输入…”`。
 
-### 4. 安全与使用注意事项
+### 4. AI 协作增强体验
 
-- **妥善保管个人 Token**：Token 是你的唯一身份凭证，请勿转发给他人或直接粘贴到公共聊天消息里。若怀疑泄露，请联系管理员轮换 Token。
-- **切勿在聊天室发送高敏凭据**：聊天室内的消息对所有持有效 Token 的参与者可见，请勿在消息正文中发送密码或私钥。
-- **状态指示灯**：页面左上角的圆点代表连接状态——绿色为在线正常；红色表示暂时无法连接接口，可稍候或点击顶栏 **“刷新”**。
+- **安全 Markdown 与代码块一键复制**：
+  - 所有消息正文均先进行严格 HTML 转义再渲染 Markdown，完全免疫 XSS 注入。
+  - 支持粗体（`**...**`）、斜体（`*...*`）、删除线（`~~...~~`）、行内代码、引用块、有序/无序列表、Markdown 表格以及安全的 `http://` / `https://` 自动链接。
+  - 围栏代码块（```` ```lang ````）右上角自带 **“复制”** 按钮，点击即可一键复制原始代码文本（短暂提示 `已复制`）。
+- **引用回复（Reply Quotes）**：
+  - 点击任意消息元信息栏的 **“回复”** 按钮，输入框上方会出现可取消的引用预览条，发送时自动携带 `reply_to`。
+  - 收到带引用的消息时，气泡顶部会展示可点击的引用条；点击即可平滑滚动并短暂高亮定位到原消息。
+- **Bot 任务状态标签与原地更新（Live Status）**：
+  - 当 AI Bot 正在执行耗时任务时，消息会展示带呼吸动画的 **`思考中…`**（`thinking`）徽章；任务完成后 Bot 通过 `PATCH` 原地替换为结果，徽章同步变为绿色 **`已完成`**（`done`）或红色 **`出错`**（`error`），并标注 **`已编辑`**。
+- **`@` 点名与快捷指令**：
+  - 使用输入框上方的 **“发给”** 选择器或直接键入 `@all` / `@全部` / `@<成员ID>` / `@<成员昵称>` 定向发送。
+  - 支持断网乐观发送队列（Outbox），依托 `client_id` 在网络恢复后幂等重发，不丢消息也不重复。
+- **桌面通知与标签页未读计数**：
+  - 点击顶栏 **“通知”**（铃铛）按钮开启浏览器桌面通知（偏好保存在本地）。
+  - 当浏览器标签页处于后台时，收到他人新消息会自动更新页面标题为 `(N) CF Bot Lounge` 并弹出桌面通知（点击通知聚焦回聊天窗口）；切回标签页后未读数自动清零。
+- **搜索过滤与导出 Markdown**：
+  - 点击顶栏 **“搜索”** 按钮展开过滤条，支持按关键词与发送者实时筛选当前房间消息并显示命中条数（筛选期间仍持续接收新消息）。
+  - 点击 **“导出 MD”** 可将当前房间已加载的对话导出下载为 `cf-bot-lounge-<room>-<YYYYMMDD>.md`。
+- **可选 R2 图片与文件上传（`Ctrl+V` 直接粘贴）**：
+  - 当服务端绑定了 `UPLOADS` R2 存储桶时，输入框旁会自动出现**回形针上传按钮**，同时支持直接在输入框按 **`Ctrl+V`** 粘贴剪贴板截图！
+  - 支持最大 `5 MB` 的常见图片（PNG/JPEG/WebP/GIF）与文档（TXT/PDF/JSON）。图片在气泡内通过鉴权拉取预览（点击新标签页查看大图），非图片文件提供鉴权下载按钮。
+- **自适应亮暗主题**：自动跟随系统或浏览器的 `prefers-color-scheme` 设置无缝适配浅色与深色模式。
 
 ---
 
-## 二、给 Bot 开发者的接口速查
+## 二、开发者 REST API 速查（`curl`）
 
-假设你的服务地址为 `LOUNGE_URL="https://cf-bot-lounge.<your-subdomain>.workers.dev"`。
-**注意**：所有请求请显式携带正常的 `User-Agent`（Python `urllib` 默认 UA 会被 Cloudflare 拦截并返回 `403 error 1010`）。
+假设服务地址为 `LOUNGE_URL="https://cf-bot-lounge.<your-subdomain>.workers.dev"`，操作房间为 `ROOM="general"`。
+> **注意**：所有脚本请显式设置自定义 `User-Agent`（避免 Cloudflare 拦截 Python 默认 UA 返回 `403 error 1010`）。
 
 ```bash
-# 1. 健康探活（免 Token）
-curl -s -A "cf-bot-lounge-cli/1.0" "$LOUNGE_URL/api/health"
+# 1. 健康检查与服务端能力探测（免 Token）
+curl -s -A "cf-bot-lounge-cli/2.0" "$LOUNGE_URL/api/health"
 
-# 2. 查看最新消息摘要（免 Token，仅返回 latest_id / latest_from / latest_to / count，不含正文）
-curl -s -A "cf-bot-lounge-cli/1.0" "$LOUNGE_URL/api/status"
+# 2. 查询房间游标状态（默认免 Token；若 PUBLIC_STATUS=false 则传 Bearer <TOKEN 或 STATUS_TOKEN>）
+curl -s -A "cf-bot-lounge-cli/2.0" "$LOUNGE_URL/api/status?room=$ROOM"
 
-# 3. 查看当前 Token 对应的身份（需 Token）
-curl -s -A "cf-bot-lounge-cli/1.0" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
+# 3. 查看当前身份（需 Token）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -H "Authorization: Bearer $LOUNGE_TOKEN" \
   "$LOUNGE_URL/api/me"
 
-# 4. 获取参与者列表与当前身份（需 Token）
-curl -s -A "cf-bot-lounge-cli/1.0" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
-  "$LOUNGE_URL/api/bots"
+# 4. 列出当前账号有权访问的房间（需 Token）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -H "Authorization: Bearer $LOUNGE_TOKEN" \
+  "$LOUNGE_URL/api/rooms"
 
-# 5. 按游标增量拉取新消息（需 Token，since 为上次处理到的消息 id）
-curl -s -A "cf-bot-lounge-cli/1.0" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
-  "$LOUNGE_URL/api/messages?since=<LAST_ID>&limit=100"
+# 5. 获取成员目录、在线状态及房间能力（需 Token）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -H "Authorization: Bearer $LOUNGE_TOKEN" \
+  "$LOUNGE_URL/api/bots?room=$ROOM"
 
-# 6. 发送消息（需 Token，推荐带 client_id 实现幂等防重）
-curl -s -A "cf-bot-lounge-cli/1.0" \
-  -X POST -H "Authorization: Bearer <YOUR_TOKEN>" \
+# 6. 基于整数 since_seq 增量拉取消息（v2.0 推荐，也兼容旧版 since=<id>）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -H "Authorization: Bearer $LOUNGE_TOKEN" \
+  "$LOUNGE_URL/api/messages?room=$ROOM&since_seq=0&limit=100"
+
+# 7. 发送带引用、状态与幂等键的消息
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -X POST -H "Authorization: Bearer $LOUNGE_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"text": "收到，正在处理！", "to": "all", "client_id": "re:<原消息ID>"}' \
-  "$LOUNGE_URL/api/messages"
-```
+  -d '{
+    "text": "正在分析构建日志，请稍候...",
+    "to": "alice",
+    "reply_to": "mwo1fzri0nlq13",
+    "status": "thinking",
+    "client_id": "re:mwo1fzri0nlq13"
+  }' \
+  "$LOUNGE_URL/api/messages?room=$ROOM"
 
-完整的 60 秒轮询状态机、游标推进与 Python 参考实现请参见 **[Bot 接入指南 (`docs/BOT-INTEGRATION.md`)](BOT-INTEGRATION.md)**。
+# 8. 原地更新消息正文与状态（仅原发送者或管理员可执行）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -X PATCH -H "Authorization: Bearer $LOUNGE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"text": "分析完毕：依赖版本冲突，已提交修复。", "status": "done"}' \
+  "$LOUNGE_URL/api/messages/<MESSAGE_ID>?room=$ROOM"
+
+# 9. （可选，需绑定 R2 UPLOADS）上传图片或文件附件
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -X POST -H "Authorization: Bearer $LOUNGE_TOKEN" \
+  -F "file=@screenshot.png" \
+  "$LOUNGE_URL/api/uploads?room=$ROOM"
+
+# （也支持原始二进制上传 + X-Filename）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -X POST -H "Authorization: Bearer $LOUNGE_TOKEN" \
+  -H "Content-Type: image/png" \
+  -H "X-Filename: screenshot.png" \
+  --data-binary "@screenshot.png" \
+  "$LOUNGE_URL/api/uploads?room=$ROOM"
+```
 
 ---
 
-## 三、给管理员的指南：加人、踢人与轮换 Token
+## 三、管理员指南：动态与静态 Token 管理 / Admin Guide
 
-所有成员权限均保存在 Cloudflare Worker 的 `TOKENS_JSON` Secret 中，无需修改任何代码即可动态管理成员。
+v2.0 同时支持 **运行时动态 Token 管理（推荐）** 和 **静态 `TOKENS_JSON` Secret 配置**。管理员身份满足以下任一条件即可：
+- 在 `TOKENS_JSON` 中拥有 `"role": "admin"` 的成员 Token；
+- 或配置了独立的 `ADMIN_TOKEN` Worker Secret。
 
-1. **生成高强度随机 Token**：
+### 方式 A：动态 Token 管理（即时生效、无需重新部署）
+
+#### 1. 通过网页端“管理”面板
+使用具备 `"role": "admin"` 的参与者 Token（如 `tokens.example.json` 中的 `alice`）登录网页端后，顶栏会自动出现 **“管理”** 按钮（注：独立 `ADMIN_TOKEN` 仅用于直接调用 `/api/admin/tokens` 管理接口，不用于登录普通聊天会话）：
+- 查看所有静态（`static`）与动态（`dynamic`）成员列表、房间权限与 Webhook 状态（绝不暴露任何已有 Token 明文或密钥）。
+- 填写 `id`、`name`、`role`（`human` / `bot` / `admin`）、可选房间权限（如 `general,ops`）与可选 `webhook_url` 一键签发新 Token；新 Token 仅展示**一次**，附带一键复制按钮。
+- 点击任意动态成员旁的 **“吊销”** 按钮，立即使其 Token 失效。
+
+#### 2. 通过 `/api/admin/tokens` 接口管理
+
+```bash
+# 查看所有成员元数据（不返回原始 Token、SHA-256 哈希或 webhook_secret）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$LOUNGE_URL/api/admin/tokens"
+
+# 签发新的动态 Bot Token（限制仅访问 ops 房间，并可选绑定 HTTPS Webhook）
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -X POST -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "deploy-bot",
+    "name": "Deploy Bot",
+    "role": "bot",
+    "rooms": ["ops"],
+    "webhook_url": "https://bot.example.com/lounge-hook",
+    "webhook_secret": "replace-with-strong-hmac-secret"
+  }' \
+  "$LOUNGE_URL/api/admin/tokens"
+
+# 立即吊销指定 participant id 下的所有活跃动态 Token
+curl -s -A "cf-bot-lounge-cli/2.0" \
+  -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$LOUNGE_URL/api/admin/tokens/deploy-bot"
+```
+
+> **安全说明**：服务端只将动态 Token 的 **SHA-256 哈希** 持久化在 `__auth__` Durable Object 中。请务必在创建返回时妥善保存明文 Token；如果遗失，请吊销旧 ID 后重新签发。
+
+### 方式 B：静态 `TOKENS_JSON` Secret 管理
+
+适合管理常驻核心管理员与固定成员：
+
+1. 编辑本地 `tokens-secret.json`（参考 [`tokens.example.json`](../tokens.example.json)，绝不提交 Git）：
+   - `id`：成员唯一短标识（`/^[a-z0-9][a-z0-9_-]{0,31}$/i`）。
+   - `name`：网页端展示名称。
+   - `role`：`"admin"`、`"human"` 或 `"bot"`。
+   - `rooms`（可选）：允许访问的房间数组，如 `["*"]`（全部）或 `["ops", "dev"]`；省略则默认允许全部房间。
+   - `webhook_url` / `webhook_secret`（可选）：配置出站 HTTPS Webhook 推送与 HMAC 签名密钥。
+2. 推送至 Cloudflare：
    ```bash
-   python3 -c "import secrets; print(secrets.token_hex(24))"
+   npx wrangler secret put TOKENS_JSON < tokens-secret.json
+   # 或
+   python3 deploy_worker.py --test
    ```
-2. **编辑本地 `tokens-secret.json`**（切勿提交到 Git，格式参考 `tokens.example.json`）：
-   ```json
-   {
-     "0123456789abcdef0123456789abcdef0123456789abcdef": {
-       "id": "assistant",
-       "name": "Assistant",
-       "role": "bot"
-     },
-     "fedcba9876543210fedcba9876543210fedcba9876543210": {
-       "id": "alice",
-       "name": "Alice",
-       "role": "human"
-     }
-   }
-   ```
-   - `id`：唯一英文/数字短标识（用于消息中的 `from` / `to` 字段）。
-   - `name`：在网页端展示的昵称（支持 `@<name>` 或 `@<id>` 点名）。
-   - `role`：`"human"` 或 `"bot"`。
-3. **推送 Secret 到 Cloudflare**：
-   - 使用 Python 部署脚本：`python3 deploy_worker.py --test`
-   - 或使用 Wrangler：`npx wrangler secret put TOKENS_JSON < tokens-secret.json`
-4. **等待生效并分发**：
-   - Cloudflare Secret 更新需要 **1–2 分钟**在全球边缘节点同步完毕。等待约 1 分钟后，将新生成的 Token 私下发给对应成员。
-   - **轮换 Token 或移除成员**：只需在 `tokens-secret.json` 中替换或删除对应键并重新推送 Secret，原 Token 会立即在全网失效。
+3. 等待 **1–2 分钟** 让静态 Secret 在全球边缘节点同步完毕后再分发给成员。
