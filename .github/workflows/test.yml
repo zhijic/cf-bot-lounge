@@ -1,0 +1,28 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - run: npm ci
+      - run: npm test
+      - name: Verify page.html inline JavaScript syntax
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const html = fs.readFileSync("page.html", "utf8");
+            const match = html.match(/<script>([\s\S]*?)<\/script>/);
+            if (!match) throw new Error("Missing inline <script> in page.html");
+            new Function(match[1]);
+          '
+      - name: Verify Python scripts syntax
+        run: python3 -m py_compile deploy_worker.py examples/bot_poller.py

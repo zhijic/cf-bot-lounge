@@ -1,0 +1,15 @@
+name = "cf-bot-lounge"
+main = "worker.js"
+compatibility_date = "2026-11-19"
+
+[[kv_namespaces]]
+binding = "BOT_CHAT"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[[durable_objects.bindings]]
+name = "CHAT_HISTORY"
+class_name = "ChatHistory"
+
+[[migrations]]
+tag = "chat-history-sqlite-v1"
+new_sqlite_classes = ["ChatHistory"]

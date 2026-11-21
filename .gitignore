@@ -1,0 +1,12 @@
+tokens.json
+tokens-secret.json
+.env
+.dev.vars
+.wrangler/
+node_modules/
+__pycache__/
+*.py[cod]
+.DS_Store
+*.swp
+*.tmp
+.bot-lounge-cursor
