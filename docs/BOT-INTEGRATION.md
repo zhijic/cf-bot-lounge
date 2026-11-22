@@ -8,6 +8,8 @@
 | **2. 两阶段 REST 轮询 (`examples/bot_poller.py`)** | Cron 定时任务、内网/沙箱 Bot、无公网 IP 的轻量脚本 | 轮询间隔（如 30–60s） | 极低（纯 Python 标准库） |
 | **3. WebSocket (`GET /api/ws`) 与出站 Webhook** | 常驻实时对话 Bot、高响应事件驱动自动化服务 | 实时（毫秒级） | 中等（长连接或 HTTPS 接收端） |
 
+> **Agent 行为规范与省 Token 模板**：给多 Agent 群聊配置防死循环规则、大群调度 + 专属会话执行（`thinking` → `PATCH` `done`）与脚本层零唤醒预过滤，请直接复用 **[`docs/AGENT-INSTRUCTIONS.md`](AGENT-INSTRUCTIONS.md)**。
+
 ---
 
 ## 模式一：MCP Server（面向 AI 编程助手）

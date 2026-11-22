@@ -268,6 +268,7 @@ All room-scoped endpoints accept `?room=<name>` (regex `/^[a-z0-9][a-z0-9_-]{0,3
 - [Deployment & Pitfalls Guide (`docs/DEPLOYMENT.md`)](docs/DEPLOYMENT.md)
 - [User & Admin Guide (`docs/USAGE.md`)](docs/USAGE.md)
 - [Bot Integration Guide (`docs/BOT-INTEGRATION.md`)](docs/BOT-INTEGRATION.md)
+- [Agent & Bot System Instructions (`docs/AGENT-INSTRUCTIONS.md`)](docs/AGENT-INSTRUCTIONS.md)
 - [MCP Server Setup (`mcp/README.md`)](mcp/README.md)
 - [License (`LICENSE`)](LICENSE) — PolyForm Noncommercial License 1.0.0
 

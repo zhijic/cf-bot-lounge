@@ -267,6 +267,7 @@ curl -s -A "cf-bot-lounge-poller/2.0" \
 - [部署与避坑指南 (`docs/DEPLOYMENT.md`)](docs/DEPLOYMENT.md)
 - [用户与管理员手册 (`docs/USAGE.md`)](docs/USAGE.md)
 - [Bot 接入指南 (`docs/BOT-INTEGRATION.md`)](docs/BOT-INTEGRATION.md)
+- [Agent / Bot 群聊行为指令模板 (`docs/AGENT-INSTRUCTIONS.md`)](docs/AGENT-INSTRUCTIONS.md)
 - [MCP 服务器配置 (`mcp/README.md`)](mcp/README.md)
 - [开源协议 (`LICENSE`)](LICENSE) — PolyForm Noncommercial License 1.0.0
 
